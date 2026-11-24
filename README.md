@@ -20,7 +20,7 @@
 要求：Git、Python 3.10+。文档和统计脚本没有第三方 Python 依赖。
 
 ```bash
-# 根仓库已包含文档；恢复两个锁定版本的上游参考仓库。
+# 根仓库已包含文档；恢复三个锁定版本的上游参考仓库。
 python3 scripts/bootstrap_references.py --restore
 
 # 启用提交前校验。
@@ -30,7 +30,9 @@ git config core.hooksPath .githooks
 python3 scripts/check_project.py
 ```
 
-`pi/` 和 `paseo/` 是可复现的**只读参考 checkout**，版本由 [`research/upstream.json`](research/upstream.json) 锁定，不直接纳入当前 M0 根仓库。M1 实现 Paseo 内置插件前，先记录 ADR、建立团队可访问的 Paseo downstream fork，再由根 superproject 用精确 gitlink 管理；Pi 默认保持上游只读。这样不会把嵌套仓库误提交成空目录，也不会产生两套不可追踪的上游改动。
+`pi/`、`paseo/`、`filmcraft/` 是可复现的**只读参考 checkout**，版本由 [`research/upstream.json`](research/upstream.json) 锁定，不直接纳入当前 M0 根仓库。M1 实现 Paseo 内置插件前，先记录 ADR、建立团队可访问的 Paseo downstream fork，再由根 superproject 用精确 gitlink 管理；Pi 和 FilmCraft 默认保持上游只读。这样不会把嵌套仓库误提交成空目录，也不会产生两套不可追踪的上游改动。
+
+FilmCraft 作为候选确定性编辑后端，与 FFmpeg 共用 EditGraph/命令契约；其原生 MCP、TCP 控制和 egui 不进入生产控制面。详见 [媒体后端路由](demo/04-media-pipeline.md#21-filmcraft-适配器与后端路由) 和 [E13 验收](demo/09-risks-research.md#2-必做实验)。`upstream.json` 的 `sparseCheckout` 仅用于轻量源码调研，不是可构建的完整源码包；E13 构建/验收需完整源码与依赖。
 
 ## 分工图与统计
 

@@ -46,7 +46,7 @@ M1 建立 Paseo downstream fork 后，目标路径如下；当前尚未创建，
 | W0 | 需求、架构、分工和工程基线 | K | 无 | 本文档、SVG、校验脚本 |
 | W1 | Zod/JSON Schema、fixtures、FakeVideoService conformance | K | W0 | v1 contract PR、双向兼容测试 |
 | W2 | Pi SDK 封闭工具与 structured Plan 探针 | K | W1 初版 | 禁用工具证明、strict model 矩阵、崩溃点报告 |
-| W3 | Paseo 插件、SQLite/CAS、JobRunner、FFmpeg 探针 | L | W1 初版 | 真实插件/DB/小样本导出、kill/restart 报告 |
+| W3 | Paseo 插件、SQLite/CAS、JobRunner、FFmpeg/FilmCraft 探针 | L | W1 初版 | 真实插件/DB/两后端小样本对照、kill/restart 报告 |
 | W4 | 桌面项目/时间线/审批/预览 | C | W1 fake；真实集成验收另需 W3 | fake UI 初验 + 真实 daemon Playwright + Electron 截图/视频 |
 | W5 | Android 会话/进度/审批/下载 | J | W1 fake；真实集成验收另需 W3 | fake/emulator 仅作开发证据；M4/M10 必须真机 |
 | W6 | 确定性桌面端到端 | K + L + C | W2、W3、W4 | 三 OS 导入→审批→编辑→导出，源 hash 不变 |
@@ -69,7 +69,7 @@ W1 至少定义 capabilities、project、plan、approval、job、artifact、even
 Gate A 的初版契约合并后，W2–W5 可以并行做最小探针与 fake 驱动开发，不要求先把整个 M1 做完。K/L 的上游探针结论汇总为 M1 ADR；C/J 的真实 daemon 集成验收仍分别依赖 W3。
 
 - K：固定样例 Plan → Pi structured submit → 审批防伪。
-- L：同样例 Plan → SQLite Job → FFmpeg 导出 → 恢复。
+- L：同样例 Plan → SQLite Job → FilmCraft/FFmpeg 对照导出 → 恢复。
 - C：FakeVideoService → 桌面项目、预览、审批、导出 UI。
 - J：同一 fake → Android 列表、进度、审批、断线重连。
 

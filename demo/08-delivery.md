@@ -6,7 +6,7 @@
 
 当前根仓库只有 `project-check.yml`：校验 Markdown、相对链接、SVG、团队数据和统计图，没有应用构建能力。以下是实现阶段必须新增的流水线，不表示已经存在或已通过。
 
-上游证据显示 Paseo 已有 Electron Builder NSIS/DMG/AppImage、Expo/EAS APK 和多 OS 测试路径，Pi 已有跨平台二进制构建；这些只证明可复用，不证明新视频应用可构建。
+上游证据显示 Paseo 已有 Electron Builder NSIS/DMG/AppImage、Expo/EAS APK 和多 OS 测试路径，Pi 已有跨平台二进制构建，FilmCraft 有 Rust 桌面/CLI/headless 构建；这些只证明可复用，不证明新视频应用可构建或 FilmCraft 已通过本项目验收。
 
 ## 2. 测试金字塔
 
@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | L0 静态/契约 | 格式、类型、lint、schema、fixtures、依赖/许可 | v1 双向兼容、生成物无 diff、插件 import allowlist |
 | L1 单元 | 状态机、权限、PTS、存储、幂等、视图模型 | 非法转换、重复请求、取消竞争、损坏输入和迁移 |
-| L2 真实组件 | 临时 FS、真实 DB、插件进程、FFmpeg、Worker IPC | 文件锁/长路径/非 ASCII、真实小样本导出、崩溃恢复 |
+| L2 真实组件 | 临时 FS、真实 DB、插件进程、FFmpeg/FilmCraft、Worker IPC | 文件锁/长路径/非 ASCII、两后端真实小样本对照、崩溃恢复 |
 | L3 E2E | daemon、Electron、浏览器、Android、relay | 完整导入→审批→任务→导出/下载；弱网和双客户端 |
 | L4 安装包 | NSIS/DMG/AppImage/APK 正常生产启动路径 | 包内 Pi/FFmpeg/Worker、文件授权、签名、升级、源 hash |
 | L5 真实模型 | 固定 GPU/模型/corpus 的 nightly/weekly | 实际视频、QA、资源和人工评审；fake 不算生成验收 |
@@ -39,6 +39,19 @@ CFR/VFR、非零首 PTS、B 帧、旋转、SAR、多音轨/5.1、文本/位图�
 - Worker 被杀、daemon 重启、插件 crash、桌面 sleep/resume。
 - lease 重复、stale complete、乱序/重复 event、磁盘不足、CUDA OOM。
 - 输出帧数错误、临时文件完整但未提交、取消发生在每个阶段。
+- 手机杀进程、后台、网络切换、relay 断开、重复审批、双客户端审批。
+- 旧 app + 新 daemon、新 app + 旧 daemon、旧工程 + 新 reader。
+
+### 3.4 FilmCraft 专项对照矩阵
+
+对每个拟开放 operation，同时跑 FilmCraft 和 FFmpeg 基准，保存输入/输出 hash、后端版本、命令映射、ffprobe、全片解码、实际 encoder/warnings 与资源报告：
+
+- CFR 基础 trim/concat/crop/scale/rotate/gain/转场，检查帧数、首尾帧、采样数和 PTS；GPU 与 CPU 路径另做画面对照。
+- VFR、非零 PTS、B 帧、SAR/旋转、多音轨、字幕/章节/附件、HDR 分别验证；不支持必须 capability unavailable，不能静默丢流或改时间拓扑。
+- 缺失/不可读素材必须 preflight 拒绝；即使导出成功且带 `offlineMedia`，也判 `OFFLINE_MEDIA_PRESENT`，不得进入 CAS。
+- `wait:false` 的 job ID、进度、取消、重复完成、进程崩溃和 daemon 重启对账；过期 backendJobId 不得提交到新 attempt。
+- `.fcproj` 私有快照和 revision 不匹配拒绝，GUI/headless/CLI 并发写不得覆盖主项目；FilmCraft undo 不替代 Revision。
+- 三桌面包内二进制、动态库、字体/NOTICE、签名和真实启动/导出。上游 alpha 的广度/性能声明不替代这些实测。
 - 手机杀进程、后台、网络切换、relay 断开、重复审批、双客户端审批。
 - 旧 app + 新 daemon、新 app + 旧 daemon、旧工程 + 新 reader。
 
@@ -69,7 +82,7 @@ CFR/VFR、非零首 PTS、B 帧、旋转、SAR、多音轨/5.1、文本/位图�
 
 ### macOS
 
-复用 hardened runtime、entitlements、Developer ID、notarize 配置。新增 Pi、FFmpeg、Python/native 动态库会改变签名闭包，必须重新检查 nested binaries 和 entitlements。
+复用 hardened runtime、entitlements、Developer ID、notarize 配置。新增 Pi、FFmpeg、FilmCraft、Python/native 动态库会改变签名闭包，必须重新检查 nested binaries 和 entitlements。
 
 保留 notary submission ID/log；执行 `codesign --verify --deep --strict`、`spctl -a -vv`、`xcrun stapler validate`，挂载**最终 DMG**后启动。仅 `.app` smoke 不算 DMG/Gatekeeper 验收。
 
@@ -113,7 +126,7 @@ DB 使用 expand/contract，保证新旧 reader 在支持窗口内可打开前�
 | 阶段 | 工作 | 通过条件 |
 | --- | --- | --- |
 | M0 设计基线 | 本文档、接口、SVG、统计和 Git 工作流 | 项目校验通过；明确无应用实现 |
-| M1 集成探针 | Pi SDK/封闭工具、Paseo 插件、FFmpeg、移动配对 | API/权限/恢复探针有输出；形成 ADR 和版本锁 |
+| M1 集成探针 | Pi SDK/封闭工具、Paseo 插件、FFmpeg/FilmCraft、移动配对 | API/权限/恢复探针有输出；E13 双后端报告；形成 ADR 和版本锁 |
 | M2 确定性桌面闭环 | 资产、EditGraph、Job、桌面、导出 | 三 OS 真实导入→批准→编辑→导出；源 hash 不变、重启恢复 |
 | M3 生成短镜头 | SAM2、VACE、合成、QA | 固定 corpus 的真实成功/失败报告；质量门通过才启用 |
 | M4 Android 远程 | 配对、预览、审批、取消、下载、重连 | 真机控制真实桌面任务；viewer 越权失败、重复审批不重复生成 |
@@ -121,6 +134,6 @@ DB 使用 expand/contract，保证新旧 reader 在支持窗口内可打开前�
 
 ## 9. 发布证据清单
 
-每个候选版本保存：tag/根与上游 commit、工具版本、contract/DB 版本、测试 JUnit/trace、源 hash、ffprobe/decode、真实生成视频和 QA、安装/升级日志、签名证书指纹、SBOM/notices、漏洞/模型许可报告、FFmpeg buildconf、SHA256SUMS、provenance attestation、灰度与 roll-forward 演练。
+每个候选版本保存：tag/根与上游 commit、工具版本、contract/DB 版本、测试 JUnit/trace、源 hash、ffprobe/decode、真实生成视频和 QA、安装/升级日志、签名证书指纹、SBOM/notices、漏洞/模型许可报告、FFmpeg buildconf、FilmCraft/Cargo.lock/craft-libs 版本、后端 conformance 与实际 encoder/warnings、SHA256SUMS、provenance attestation、灰度与 roll-forward 演练。
 
 缺任何目标平台证据，就把该平台标为未验证，而不是以其他平台结果替代。

@@ -38,7 +38,7 @@ MVP 是单用户、单桌面 daemon、若干受信设备；不承诺多租户协
 | F-01 | 本地导入与资产保护 | SHA-256、流/PTS/色彩报告、代理可播放；源 hash 前后不变 |
 | F-02 | 镜头与帧检查 | 候选镜头可拆分/合并，接触表时间码可回溯到源帧 |
 | F-03 | Agent 计划 | 结构化 EditPlan 含范围、操作、依赖、成本、风险和验收；可修改/拒绝/批准 |
-| F-04 | 确定性编辑 | trim、concat、gap、crop、scale、rotate、静音、gain、基础字幕策略 |
+| F-04 | 确定性编辑 | trim、concat、gap、crop、scale、rotate、静音、gain、基础字幕策略；FFmpeg 与通过验收的 FilmCraft 后端走同一 EditGraph/命令契约 |
 | F-05 | 真实局部生成 | 点选/框选 → SAM2 mask → 锚帧/参考图 → VACE 短镜头 → 合成 → QA |
 | F-06 | 交互审查 | 原/结果切换与并排、帧步进、mask/锚点叠加、计划 diff、失败原因 |
 | F-07 | 持久任务 | daemon/UI 重启恢复；取消、失败、重试和重复消息不破坏状态 |
@@ -50,7 +50,8 @@ MVP 是单用户、单桌面 daemon、若干受信设备；不承诺多租户协
 ### 3.2 P1：有证据后再启用
 
 - OTIO 交换导出、更多生成/补全后端、远程 GPU Worker 池。
-- 更复杂的变速、转场、调色、音频混音和字幕烧录。
+- FilmCraft 的复杂转场、调色、音频混音、字幕烧录和交换格式；先按能力矩阵验收，不因上游存在命令就自动启用。
+- PhotoCraft 锚帧精修、EffectCraft 合成、SoundCraft 音频专项适配；各自独立 ADR，不与 FilmCraft 首版并行引入。
 - HDR 确定性剪辑专项支持、macOS/Windows 原生生成 Worker。
 - 自动质量指标的硬门；必须先经人工标注集标定。
 

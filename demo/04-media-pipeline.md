@@ -4,7 +4,7 @@
 
 ## 1. 核心原则
 
-内部事实源是**版本化 EditGraph + Revision**；FFmpeg filtergraph、OTIO、EDL、VACE 输入和导出视频都是派生产物。任何生成模型只返回候选视觉资产，不能直接覆盖时间线或声称已保留音频、字幕、VFR、HDR 和附件。
+内部事实源是**版本化 EditGraph + Revision**；FilmCraft `.fcproj`、FFmpeg filtergraph、OTIO、EDL、VACE 输入和导出视频都是派生产物。任何生成模型只返回候选视觉资产，不能直接覆盖时间线或声称已保留音频、字幕、VFR、HDR 和附件。
 
 执行顺序固定为：
 
@@ -14,7 +14,7 @@
 
 | 操作 | 执行器 | 约束与降级 |
 | --- | --- | --- |
-| trim、concat、gap、crop、scale、rotate、显式变速、基础调色/音量 | EditGraph → FFmpeg | 无 GPU；时间、流和色彩策略显式记录 |
+| trim、concat、gap、crop、scale、rotate、显式变速、基础调色/音量 | EditGraph → FilmCraft 或 FFmpeg | 无 GPU；按 capability 与素材矩阵选后端；时间、流、实际 encoder 和色彩策略显式记录 |
 | 字幕/转写辅助理解 | 独立音轨/cue timeline、转写 adapter | 无音轨或转写失败不阻塞纯画面编辑 |
 | 对象点选、跟踪与修正 | SAM2.1 + 人工修正 | 每镜头独立 state；跨硬切重置 |
 | 无新语义物体移除 | 独立补全后端，经许可和质量基准选择 | 未配置商业可用后端时能力不可用；ProPainter 只作非商业研究 |
@@ -23,6 +23,21 @@
 | 长镜头 | 时间段 DAG + overlap + 边界 QA | 不一次输入任意长视频；分段不冒充全局一致性 |
 | 音频生成、配音、音乐 | 独立后端接口 | 不属于首版 VACE 能力 |
 | 自动 HDR 生成、任意 VFR 直接输入、多稀疏关键帧严格一致 | 实验项 | 未验收前拒绝或转人工 |
+
+### 2.1 FilmCraft 适配器与后端路由
+
+FilmCraft 的 command-first、整数时基、copy-on-write 项目、CPU/GPU 渲染、代理、调色、音频和交换格式有复用价值；它仍是 alpha，因此不是替代所有 FFmpeg 工作的前提。
+
+| 操作/素材 | 优先探针 | 约束 |
+| --- | --- | --- |
+| CFR、单视频/音频流的 trim/concat/crop/transform | FilmCraft | 与 FFmpeg 对照帧数、时间、画面、声音；全通过才标 capability |
+| 效果、曲线调色、音频 mixing/响度、代理 | FilmCraft | 预览/最终一致性、CPU/GPU 对照、实际资源与 encoder |
+| VFR 保留、多音轨/字幕/章节/附件、特殊封装、生成回合成 | FFmpeg/现有 Worker | FilmCraft 未证明完整映射前不宣称支持 |
+| ffprobe、独立全片解码/PTS/音画 QA | FFmpeg/ffprobe | 不信任后端自报成功；输出 `offlineMedia` 非空即失败 |
+
+每个 capability key 是 `(operation, codec/container, timeTopology, streams, color, resolution, backendVersion)`；不存在笼统的 `filmcraftSupported: true`。编译期间由白名单映射生成命令，不接受模型/客户端指定任意 command ID。
+
+FilmCraft 的 254016000000 ticks/s 通过 `ticks = round(rationalSeconds × 254016000000)` 在边界换算，记录 rounding/frame snap；内部 Rational、原始 presentation index 和 SamplingMap 不变。整段执行前固定 `backendId + backendVersion + engineSnapshotHash`，输出 manifest 保存实际 encoder、warnings 和映射。若任何节点不能无损表达，整个对应执行计划拒绝，不靠丢流或重采样凑成功。
 
 ## 3. EditGraph 与时间模型
 

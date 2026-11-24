@@ -203,3 +203,48 @@
 - 当前 app 无 expo-video/转码/后台渲染依赖；新增 expo-video 仅播放 proxy。Android 不负责生成，background-task 不用于实时同步。F-Droid 无 QR/push 时用 pasted-link + 前台拉取。
 - 外部插件 server 无沙箱、client bundle eval，首版只启用 first-party 签名插件；Electron 主窗口 sandbox 需要显式开启并验证 preload。
 - 证据：`packages/{app,desktop,plugin,protocol,server,client,relay}` 对应源码与 `docs/{permissions,connected-hosts,relay-endpoint-security}.md`。仅静态调研，未运行真机或媒体传输测试。
+
+## 13. FilmCraft 增量调研（2026-11-25，进行中）
+
+### 官方材料首轮观察，待源码复核
+
+- [FilmCraft README](https://github.com/storytold/filmcraft)：Rust NLE，支持三桌面和 WebAssembly；GUI、CLI、JSON-lines TCP 控制通道与 MCP 共用带 ID、类型参数和 enabled 状态的命令注册表，宣称超过 650 个 engine commands。这个“同一命令内核、多入口”的分层比把 GUI 点击动作逐个暴露给 LLM 更值得复用。
+- 其 `engine` 管命令/session/undo/jobs，`ui-egui` 只是可替换前端；`time/project/edit/render/gpu/export` 分层与本项目 EditGraph/Worker/ToolGateway 存在直接比较价值。
+- README 宣称自研 H.264/HEVC/ProRes/AAC 等、无 FFmpeg 运行时依赖、254016000000 ticks/s 整数时间、原子保存/恢复、内容缓存预览、OTIO/FCPXML/AAF 等交换。以上均是上游声明，尚未在本项目环境编译或跑真实素材验证。
+- 上游同时明确自身是 alpha：估算 ready for real work 约 56%；调色、keys 和部分导出仍走 CPU；Windows/Linux 测试少于 macOS；HEVC 导出依赖硬件，AV1 无导出；实际相机/手机文件覆盖有限。因此不能把“命令多”直接视为成熟生产后端。
+- 许可为 MIT OR Apache-2.0，需保留 NOTICE 和第三方资产/字体归属；ArtCraft 品牌与 logo 不属于代码许可，修改/再发行版本必须移除。
+- 同组织值得进一步核验的相关项目是 PhotoCraft（图像图层/mask）、EffectCraft（动态图形/VFX）、SoundCraft（音频）以及各项目共享的 command/control 机制；Pdf/Word 等与本项目无直接关系，不纳入集成范围。
+- 初步设计假设：优先研究“一个共享、可撤销的编辑命令服务，同时供 Agent 和 GUI 调用”，而不是分别做 Agent 工具和手动 GUI 两套执行路径。是否采用 FilmCraft 本体，取决于源码中的协议、进程隔离、任务恢复、时间戳/流保真和 headless 运行能力。
+
+### 控制协议、项目模型与任务边界
+
+- [架构](https://github.com/storytold/filmcraft/blob/main/docs/architecture.md)确认 headless engine 通过 `Session::execute(id, params)` 统一处理编辑；`CommandSpec` 含 ID、参数说明、enabled/journal，修改用 `Arc<Project>` copy-on-write 快照，undo 200 项。254016000000 tick/s 是常见帧率和采样率的公共整数时基；本项目可以在 FilmCraft 边界转换 Rational，不应为接入它而放弃原 PTS/SamplingMap。
+- [控制协议](https://github.com/storytold/filmcraft/blob/main/docs/control-protocol.md)的桌面 JSONL 仅监听 loopback，但要求每次会话随机 token；同机其他 OS 用户仍可能访问 loopback。`engine.execute` 可运行 engine/UI 命令，`ui.*` 可输入、截图、写指定路径，不能把该原始端口暴露到 relay/Android。
+- [Agent 文档](https://github.com/storytold/filmcraft/blob/main/docs/agents.md)明确 headless MCP **没有目录限制**，绝对路径导入且能按用户权限读写。MCP 的 readOnly/destructive/idempotent annotations 只是客户端提示，不是本项目授权；生产仍走封闭 ToolGateway + daemon 白名单，不直接加载上游 `.mcp.json`。
+- 长导出可用 `wait:false` 返回 job 并轮询/取消；但任务/队列是 session 状态，项目保存不合并并发会话，CLI `--save` 锁不覆盖 desktop/MCP。故本项目每个 engine session 单写者，Job/审批/lease/结果未知仍由 daemon 持久化，不能把 FilmCraft job ID 当作恢复协议。
+- 离线素材会渲染占位画面：MCP 导出仍可成功，只在结果中列 `offlineMedia`。适配器必须 preflight 检查所有资产并令 `offlineMedia != []` 为硬失败，禁止占位画面进入 completed/导出。
+- 项目格式是有版本迁移的 `.fcproj` JSON，原子写+fsync、自动保存和恢复日志完善，但媒体按路径引用，identity 只是 size+首尾各 1MiB 的 64-bit fingerprint，不是本项目要求的 SHA-256。源资产身份和 CAS 仍由 MediaService 负责，FilmCraft 项目仅作后端私有临时状态。
+- CPU 参考渲染与 GPU 快路径、代理、线性光合成、颜色管理、字幕、音频混合和 OTIO 等是真实复用价值；但不因为上游宣称“跨机器可复现”就省略本平台 ffmpeg/全片解码/PTS/音画 QA。硬件编码 auto 可能回退软件，结果 manifest 必须记录实际 encoder/warnings。
+- [PhotoCraft](https://github.com/storytold/photocraft) 同样 command-first，适合未来锚帧图层/蒙版/PSD 精修；early alpha 且官方说不能作为日常 Photoshop 替代，不纳入首版。
+- [EffectCraft](https://github.com/storytold/effectcraft) 覆盖合成、动效和表达式，但项目年轻、Windows/Linux 有基础交互缺陷且模型仍评估；首版 FilmCraft 已含效果/转场，不再引入第二套时间线事实源。
+- [SoundCraft](https://github.com/storytold/soundcraft) 的 MCP 有独立 `--automation-read-root/--automation-write-root`，比 FilmCraft 更接近受限 Worker，但为 pre-alpha，且首版 FilmCraft 已有响度、音频效果和 mixing；保留为以后音频专项适配器，不与首版并行集成。
+
+### 固定源码核验与最终选型
+
+- 固定 FilmCraft `ba6fe10529c7bf5d2a9283f9de2e35c0ccff926c`（workspace `0.20.1`，Rust `1.95`），commit 时间 `2026-11-23T17:33:20-06:00`。普通完整 clone 因 HTTP/2 EOF 失败，改用 HTTP/1.1、depth 1、blob:none 稀疏克隆成功；仅审阅与集成相关源码，未构建。
+- [Cargo.toml](https://github.com/storytold/filmcraft/blob/ba6fe10529c7bf5d2a9283f9de2e35c0ccff926c/Cargo.toml) 还把大部分 craft-libs 固定到 `33be35625e252cc4f06aa375b3b428521faea37d`；`craft-fcproj-format` 是 `3af2280ee3434a2c860012df2f440652621c2c81`。实施必须锁定 Cargo.lock 和整个依赖图，不能只锁主仓库。
+- [commands.rs](https://github.com/storytold/filmcraft/blob/ba6fe10529c7bf5d2a9283f9de2e35c0ccff926c/crates/engine/src/commands.rs) 的 `params` 是供人/Agent 阅读的 JSON-ish 文本；[automation/server.rs](https://github.com/storytold/filmcraft/blob/ba6fe10529c7bf5d2a9283f9de2e35c0ccff926c/crates/automation/src/server.rs) 的 `RunParams` 只给外层 `id: String + params: Value` 生成 schema。结论：**不能把原生 command catalog 当作本项目严格工具契约**，需逐操作写 schema、语义校验和 golden fixtures。
+- [engine/lib.rs](https://github.com/storytold/filmcraft/blob/ba6fe10529c7bf5d2a9283f9de2e35c0ccff926c/crates/engine/src/lib.rs) 的 `Session::new` 默认 `FsServices`，文件接口直接接收路径；其 `Session.revision/document_epoch`、jobs、export_queue 都是进程内状态。daemon 必须另存 `approvedRevisionHash + backendSnapshotHash + backendJobId`，重启后对账，不能因 FilmCraft undo/recovery 就取消自己的 Revision/Job。
+- [export_tools.rs](https://github.com/storytold/filmcraft/blob/ba6fe10529c7bf5d2a9283f9de2e35c0ccff926c/crates/engine/src/export_tools.rs) 证明 `wait:false` 返回 job/poll/cancel，`wait:true` 仍可在成功结果里携带 `offlineMedia`；适配器非阻塞提交，完成时同时检查 engine result、offlineMedia、产物 hash、ffprobe 和 QA。
+- [control_server.rs](https://github.com/storytold/filmcraft/blob/ba6fe10529c7bf5d2a9283f9de2e35c0ccff926c/apps/filmcraft/src/control_server.rs) 有 64 hex token、4MiB 行限制、16 连接和 120 秒 socket 超时，适合本地人工专家桥，但所有 engine/UI 命令都可达，不能作为移动端/模型原始工具表面。
+
+### 方案比较与决定
+
+| 方案 | 优点 | 不可接受/代价 | 结论 |
+| --- | --- | --- | --- |
+| 原生 MCP 全量暴露给 Agent，GUI 直接嵌入整套 FilmCraft | 最快获得大量按钮与编辑能力 | 无目录限制、无审批/严格 schema、双项目/Job 状态、UI 技术栈分裂，650+ 命令增加规划与误操作面 | 拒绝作为生产路径；仅用于隔离探针 |
+| 本项目统一 EditGraph/EditCommand，FilmCraft 做独立 Rust 后端，GUI/Agent 共用 daemon 命令 | 保留现有安全、审批、恢复和生成链；GUI 手动与 Agent 结果天然可比较/撤销；按能力路由可回退 | 需要写适配器、操作映射和真实媒体矩阵 | **采用，待 E13 探针** |
+| 完全不采用，只 FFmpeg | 最少依赖 | 放弃现成 NLE、关键帧参数、调色/混音、代理、交换格式和 command-first 设计 | 保留为兼容/QA 与未覆盖能力后端，而非唯一方向 |
+| 一次引入 Photo/Effect/SoundCraft | 功能广 | 多套项目/时间/任务事实源、alpha 风险、打包和许可闭包膨胀 | 首版排除，未来独立适配器评审 |
+
+最终边界：GUI 手动工具和 Agent 规划共用 `EditCommand`/EditGraph，**不是两套执行逻辑**。FilmCraft 只消费受控 staging 中的源资产和 canonical operation，输出必须回 CAS；不拥有用户项目、审批、CAS、远程连接或最终 Job 状态。FFmpeg 仍是 ffprobe、VFR/多流/附件、生成回合成和独立 QA 的基准后端。首版不把 FilmCraft WASM 放进 renderer，也不将 egui 窗口当主工作台；可选“专家模式”另开 FilmCraft 窗口只能作用于派生副本并显式重导入。

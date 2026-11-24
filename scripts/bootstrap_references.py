@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Restore or verify the exact Pi and Paseo research revisions.
+"""Restore or verify the exact upstream research revisions.
 
 Reference checkouts are intentionally ignored by the M0 repository. The M1 Paseo
 implementation requires a separate ADR and a team downstream fork managed by an
@@ -49,11 +49,18 @@ def verify(reference: dict) -> str:
 def restore(reference: dict) -> str:
     checkout = ROOT / reference["path"]
     if (checkout / ".git").exists():
+        if reference.get("sparseCheckout"):
+            git("sparse-checkout", "set", "--no-cone", *reference["sparseCheckout"], cwd=checkout, timeout=60)
         return verify(reference)
     if checkout.exists():
         raise RuntimeError(f"{checkout} 已存在且不是 Git 仓库；请先人工处理，脚本不会覆盖")
-    git("clone", "--filter=blob:none", "--no-checkout", reference["url"], str(checkout), timeout=900)
-    git("checkout", "--detach", reference["commit"], cwd=checkout, timeout=300)
+    git("init", str(checkout), timeout=60)
+    git("remote", "add", "origin", reference["url"], cwd=checkout, timeout=60)
+    if reference.get("sparseCheckout"):
+        git("sparse-checkout", "init", "--no-cone", cwd=checkout, timeout=60)
+        git("sparse-checkout", "set", "--no-cone", *reference["sparseCheckout"], cwd=checkout, timeout=60)
+    git("-c", "http.version=HTTP/1.1", "fetch", "--depth", "1", "--filter=blob:none", "origin", reference["commit"], cwd=checkout, timeout=900)
+    git("-c", "http.version=HTTP/1.1", "checkout", "--detach", "FETCH_HEAD", cwd=checkout, timeout=900)
     return verify(reference)
 
 

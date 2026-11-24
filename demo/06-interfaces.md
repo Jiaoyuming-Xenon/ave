@@ -37,15 +37,35 @@ type CapabilitySet = {
   operations: string[];
   workerProfiles: Array<{
     profileId: string;
-    engine: string;
+    engine: "ffmpeg" | "filmcraft" | "sam2" | "vace";
+    backendVersion: string;
+    backendBuildDigest: string;
     modelDigest?: string;
     maxFrames?: string;
     maxWidth?: number;
     maxHeight?: number;
     colorSpaces: string[];
   }>;
+  deterministicBackends: DeterministicCapability[];
+};
+
+type DeterministicCapability = {
+  backendId: string; // 注册表 ID，不是路径或 URL
+  engine: "ffmpeg" | "filmcraft";
+  backendVersion: string;
+  backendBuildDigest: string;
+  operations: string[]; // 仅本项目白名单操作，不是上游 command catalog
+  codecs: string[];
+  containers: string[];
+  timeTopologies: Array<"cfr" | "preserve-vfr" | "explicit-retime">;
+  streamPolicies: string[];
+  colorSpaces: string[];
+  validationEvidence: string; // 指向可复现 conformance 报告
+  verifiedAt: string;
 };
 ```
+
+没有 `validationEvidence` 的 FilmCraft 操作对生产 UI/Agent 不可见；能力检查使用完整 `(operation, codec/container, timeTopology, streams, color, resolution, backendVersion)` 键。禁止用一个布尔值代表整个 FilmCraft 可用。
 
 `streamUid` 只在 immutable Asset 内稳定；资产重导入或内容变化产生新 assetId/contentHash。模型、UI、Worker 不接收任意可写源路径。
 
@@ -121,6 +141,7 @@ type EditPlanDraftV1 = {
   projectId: string;
   baseTimelineRevision: string;
   baseAssetManifestHash: string;
+  preferredDeterministicBackendId?: string; // 仅限 capabilities 注册表；daemon 可拒绝/另选
   intent: string;
   trimOperations: TrimOperation[];
   transformOperations: TransformOperation[];
@@ -165,6 +186,7 @@ type SubtitleOperation = OperationBase & {
 };
 
 type AcceptedEditPlan = EditPlanDraftV1 & {
+  deterministicBackendId: string; // daemon 接受计划时固定，变化产生新 planHash
   planId: string;
   revision: string;
   runId: string;
@@ -200,7 +222,7 @@ type GenerationRequest = {
 };
 ```
 
-`planHash = SHA256(canonicalPlanWithoutRunMetadata)`。`planId/revision`、`idempotencyKey` 有唯一约束。源、Revision、prompt、模型、参考图、mask、seed、成本或外部目的地变化都必须改变 planHash。
+`planHash = SHA256(canonicalAcceptedPlanWithoutRunMetadata)`，包含 daemon 确定的 deterministicBackendId。`planId/revision`、`idempotencyKey` 有唯一约束。源、Revision、后端、prompt、模型、参考图、mask、seed、成本或外部目的地变化都必须改变 planHash。
 
 ### 4.2 语义校验
 
@@ -407,6 +429,24 @@ type TaskLease = {
   paramsCanonicalJson: string;
   checkpointRef?: BlobRef;
   resourceClass: string;
+  deterministicBackend?: {
+    backendId: string;
+    backendVersion: string;
+    backendBuildDigest: string;
+    engineSnapshotHash: string;
+  };
+};
+
+type DeterministicBackendResult = {
+  backendId: string;
+  backendVersion: string;
+  engineSnapshotHash: string;
+  backendJobId?: string; // 对账用，不是 daemon Job ID
+  backendProjectHash?: string;
+  actualEncoder: string;
+  warnings: string[];
+  offlineMedia: string[]; // 必须为空才能 complete
+  commandMappingManifest: BlobRef;
 };
 
 type WorkerRoute = {
@@ -421,13 +461,18 @@ type WorkerEvent = WorkerRoute & (
       completedUnits: string; totalUnits?: string; message?: string }
   | { type: "checkpoint"; checkpoint: BlobRef; committedThrough: string }
   | { type: "complete"; outputs: BlobRef[];
-      outputManifest: BlobRef; metrics: ResourceMetrics }
+      outputManifest: BlobRef; metrics: ResourceMetrics;
+      deterministicBackend?: DeterministicBackendResult }
   | { type: "failed"; code: string;
       retryable: boolean; stage: string; sanitizedDetail: string }
 );
 ```
 
-`WorkerHello` 声明协议、操作、引擎/模型 digest、设备、最大尺寸/帧数、FFmpeg build hash。每次新 lease 增加 epoch；daemon 按 `jobId + nodeId + attempt + leaseEpoch` 四元组路由、去重和提交，任何字段不匹配的 checkpoint/complete 都拒绝。完成是至少一次投递 + daemon 幂等提交，不宣称分布式 exactly-once。
+`WorkerHello` 声明协议、操作、引擎/模型 digest、设备、最大尺寸/帧数、FFmpeg/FilmCraft build digest。每次新 lease 增加 epoch；daemon 按 `jobId + nodeId + attempt + leaseEpoch` 四元组路由、去重和提交，任何字段不匹配的 checkpoint/complete 都拒绝。完成是至少一次投递 + daemon 幂等提交，不宣称分布式 exactly-once。
+
+确定性 Worker 只接收 canonical operation、BlobRef 和受控 staging 映射；不得接收上游 `command_run` 字符串。FilmCraft 适配器保存 `approvedRevisionHash ↔ engineSnapshotHash ↔ backendJobId` 映射，非阻塞提交并以 `wait:false + jobs.list/jobs.cancel` 桥接。完成时先校验 `offlineMedia == []`、engine result、actualEncoder、产物 SHA-256，再执行 ffprobe/全片 QA；其中任何失败都返回 `failed`，不提交占位或部分输出。后端进程重启后若无法唯一对账，attempt 为 `OUTCOME_UNKNOWN/NEEDS_RECONCILIATION`，不能盲目重跑。
+
+同一 attempt 不跨 FilmCraft/FFmpeg 继续执行；改变 backendId、版本、映射或 engine snapshot 会改变 planHash/cacheKey，需要新 Revision 和审批。
 
 取消消息含完整四元组和 `gracePeriodMs`。Worker 不直接改项目、Revision 或审批。
 
@@ -439,6 +484,7 @@ type WorkerEvent = WorkerRoute & (
 - `UNAUTHENTICATED`、`PERMISSION_DENIED`、`PROJECT_NOT_FOUND`、`ASSET_NOT_FOUND`
 - `REVISION_CONFLICT`、`APPROVAL_EXPIRED`、`APPROVAL_CONSUMED`、`IDEMPOTENCY_CONFLICT`
 - `CAPABILITY_UNAVAILABLE`、`MODEL_LICENSE_BLOCKED`、`RESOURCE_EXHAUSTED`
+- `BACKEND_SNAPSHOT_MISMATCH`、`OFFLINE_MEDIA_PRESENT`、`BACKEND_RESULT_INVALID`
 - `LEASE_STALE`、`CHECKPOINT_INVALID`、`ARTIFACT_HASH_MISMATCH`、`RANGE_NOT_SATISFIABLE`
 - `QA_FAILED`、`QA_MANUAL_REQUIRED`、`CANCELLED`、`OUTCOME_UNKNOWN`、`NEEDS_RECONCILIATION`
 - `WORKER_PROTOCOL_MISMATCH`、`UPSTREAM_UNAVAILABLE`、`INTERNAL`

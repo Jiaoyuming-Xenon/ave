@@ -41,6 +41,8 @@ Pi 扩展与进程同权限，project trust 不是沙箱。真正的文件系统
 
 Agent 工具只负责 **inspect / propose / query**。审批和创建渲染 Job 由用户经 UI 调用 daemon API，模型工具集中没有 `approve_plan`、`apply_plan`、`render`、`set_approval` 或 `execute_command`。
 
+FilmCraft 是候选确定性执行后端，**不是新的 Agent 控制面**。不向 Pi 注册上游 `command_run/command_batch/ui_control`，不加载其 `.mcp.json`，也不暴露任意路径的 `media_import`。GUI 手动工具和 Agent 计划都规范化为同一 `EditCommand`/EditGraph，由 daemon 选择已审批后端；650+ 原生命令只有经白名单、严格 schema、语义校验和 fixture 的操作才可执行。
+
 | 工具 | 输入摘要 | 结果与边界 |
 | --- | --- | --- |
 | `get_project_snapshot` | `projectId` | 紧凑镜头、当前 Revision、后端能力；不下发整份时间线 |
@@ -100,7 +102,7 @@ Android operator 可以调用同一 Approval API；viewer 不行。高费用或�
 规划：
 1. 先明确目标、输出 profile、保留对象/音频/文字和精确区间。
 2. 全局读取镜头摘要，局部读取必要帧；不反复读取整片。
-3. 确定性操作优先；语义创作才使用生成请求。
+3. 确定性操作优先，只使用 capabilities 中已验收的后端/操作；FilmCraft/FFmpeg 不绕过 EditGraph，语义创作才使用生成请求。
 4. 使用资产 ID/hash、stream ID 和有理数时间，不编造帧号或路径。
 5. 局部生成必须声明 mask、锚帧/参考图、采样、传播、合成和 QA。
 6. 关键帧数量随运动、遮挡和 QA 调整，不承诺固定一帧。

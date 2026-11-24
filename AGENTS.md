@@ -12,7 +12,7 @@
 ## 工程边界
 
 - 当前是设计基线，不得把文档、空目录、假进度、静态图或模拟 Worker 说成已运行应用。
-- `pi/`、`paseo/` 是锁定版本参考 checkout，默认只读且被根仓库忽略。不得在其中留下隐蔽产品改动；需要上游补丁时先写 ADR 并确定 fork。
+- `pi/`、`paseo/`、`filmcraft/` 是锁定版本参考 checkout，默认只读且被根仓库忽略。不得在其中留下隐蔽产品改动；需要上游补丁时先写 ADR 并确定 fork。
 - M1 产品代码位于团队 Paseo downstream fork，按 `plugins/video-editor/shared/contracts` → daemon/Worker → desktop/Android 的依赖方向组织。UI 不直接访问数据库、模型文件或 shell。
 - 会话、EditJob、审批、渲染进度分别以真实服务状态为准；`agent_settled` 不等于任务完成。
 - 原始资产不可变。所有写操作限制在授权工作区；模型输出不能直接成为路径、URL、命令行或权限。

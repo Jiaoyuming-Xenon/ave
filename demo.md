@@ -1,6 +1,6 @@
 # Agentic Video Editor 设计总览
 
-> 版本：团队可执行设计基线，2026-11-24。原始需求见 [`research/demo.original.md`](research/demo.original.md)，证据见 [`findings.md`](findings.md)。
+> 版本：团队可执行设计基线，2026-11-25（新增 FilmCraft 调研与后端适配决策）。原始需求见 [`research/demo.original.md`](research/demo.original.md)，证据见 [`findings.md`](findings.md)。
 >
 > 本仓库当前交付的是设计、接口契约、团队工作流和可执行校验脚本，**不是已经实现的视频编辑应用**。任何模型效果、安装包、真机、性能或兼容性结论都必须在对应验收阶段提供真实证据。
 
@@ -13,7 +13,7 @@
 | 原始目标 | 工程实现 | 不可接受的替代 |
 | --- | --- | --- |
 | Windows `.exe`、macOS `.dmg`、Linux `.AppImage`、Android `.apk` | Electron + Expo Web 桌面，Expo Android，复用 Paseo 构建与远程基础设施 | 浏览器能打开就宣称安装包完成 |
-| 桌面 GUI 与本地 Agent 编辑本地视频 | 视频专用 Pi Runtime、受控 ToolGateway、非破坏 EditGraph、FFmpeg/Worker | 通用 shell 直接改文件；聊天文本冒充编辑结果 |
+| 桌面 GUI 与本地 Agent 编辑本地视频 | 视频专用 Pi Runtime、受控 ToolGateway、非破坏 EditGraph、FilmCraft/FFmpeg/生成 Worker | 通用 shell 直接改文件；聊天文本冒充编辑结果 |
 | 移动端监控与控制同一工作区 | 配对、typed RPC/events、预览、审批、取消、上传下载、断线重连 | 手机 UI 直接操作 Worker 或绕过 daemon 权限 |
 | 上传视频并以视频交付 | 内容寻址资产、代理、局部/全片 QA、原子导出、manifest | 静态图、源片、假进度或无效链接冒充输出 |
 
@@ -35,13 +35,14 @@
 
 1. **EditJob 与 Agent 会话分离**：对话停止不取消持久任务；Pi 的 `agent_settled` 只表示模型轮次结束。
 2. **视频领域服务是唯一所有者**：不再让 Paseo 通用 Pi provider 与视频服务同时写同一会话；客户端不直接访问 Worker、SQLite 或 CAS 私有路径。
-3. **确定性优先**：裁切、拼接、缩放、音频和字幕走 EditGraph + FFmpeg；只有语义创作进入生成后端。
+3. **共享编辑命令、可插拔确定性后端**：GUI 手动工具和 Agent 使用同一 EditCommand/EditGraph；FilmCraft 与 FFmpeg 按已验收能力执行，禁止两套项目/任务事实源。
 4. **关键帧是条件和审批点**：不是整片理解的唯一输入，也不保证任意镜头只改一帧；需要 mask、时序传播、合成和 QA。
 5. **首个生成后端收口**：实验 Wan2.1-VACE-1.3B 的 480p 短镜头，固定代码/权重 digest；未通过 benchmark 前不成为默认能力。
 6. **原片不可变、派生物内容寻址**：Revision、mask lineage、SamplingMap、模型/构建 digest 和 QA 均进入可追溯 manifest。
 7. **权限在服务端执行**：配对和 E2EE 不替代逐 RPC principal、项目、操作、revision 和预算校验。
 8. **无 GPU 仍有真实价值**：确定性导入、编辑和导出可用；生成后端不可用时明确未配置，不生成伪结果。
 9. **契约先行、四人并行**：Paseo downstream fork 中 `plugins/video-editor/shared/contracts` 是唯一跨端事实源，按后端、桌面、Android 分工作业，跨端变更走同一 contract PR。
+10. **FilmCraft 有边界地复用**：固定 `ba6fe105…` 作为候选 Rust 编辑后端；原生 MCP/控制端口不进生产，离线占位导出视为失败，后端切换必须新审批。Photo/Effect/SoundCraft 不进入首版。
 
 ## 当前状态与下一阶段
 

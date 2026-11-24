@@ -27,7 +27,8 @@
 | 领域插件 | Paseo built-in plugin、TypeScript、Zod RPC/subscription | video API、权限、项目/任务服务 | 内置插件不沙箱，import allowlist |
 | Agent | 独立 Node agent-worker、Pi `createAgentSession` | 规划、会话、事件、受控工具 | 自有 IPC；不直接暴露原始 Pi RPC |
 | 领域存储 | SQLite WAL + 本地 CAS | Revision、审批、Job、outbox、资产索引 | `node:sqlite` 仅候选，需三 OS packaged 探针 |
-| 媒体 | 锁定 FFmpeg/ffprobe、Python media worker | 探测、确定性编辑、合成、导出 | 构建/硬件路径逐平台实测 |
+| 确定性媒体 | FFmpeg/ffprobe + FilmCraft Rust adapter | 共享 EditCommand → 后端路由、编辑、效果、混音、导出 | FilmCraft 候选；按操作/素材矩阵验收，未验证用 FFmpeg |
+| 探测/生成媒体 | FFmpeg/ffprobe、Python media worker | 探测、时间映射、生成前后处理、合成、独立 QA | 构建/硬件路径逐平台实测 |
 | 视觉模型 | SAM2.1、Wan2.1-VACE-1.3B | mask、短镜头生成候选 | CUDA/质量/VRAM/许可均需验收 |
 | 契约 | Zod → JSON Schema + golden fixtures | TS/Python 共用 wire 契约 | 只有一个源 schema，生成物需校验 |
 | 观测 | 结构化本地 JSONL、可选 OTel exporter | 日志、trace、指标、崩溃与诊断 | 默认不上传 |
@@ -54,9 +55,16 @@ Paseo 通用 Pi provider 不再拥有视频会话，避免双会话状态。内�
 
 使用封闭 ResourceLoader 和 `createAgentSession`，只开放 inspect/propose/query 工具。daemon 通过自有 `AgentRunController` IPC 执行 start/steer/followUp/abort 和事件订阅。进程崩溃只影响 planning run，不回滚已接受 Job。
 
-### 4.4 FFmpeg 与 Python Worker
+### 4.4 确定性编辑后端与 Python Worker
 
 FFmpeg 用参数数组直接启动，`shell:false`。Python Worker 通过版本化 stdio/localhost job protocol 接收 BlobRef、受控参数和 lease，不执行模型生成的 Python 或 shell。远程 Worker 使用认证传输、同协议和相同 hash/manifest 验证。
+
+FilmCraft 是独立 Rust `deterministic-engine-worker`，通过本项目自有协议接收 canonical `EditCommand`，不是直接开放 MCP/control channel。每个后端 session 单写者；`.fcproj` 仅是绑定 `approvedRevisionHash` 的后端私有快照，FilmCraft job ID 映射到 daemon attempt，不能替代 SQLite Job/lease。
+
+- 源文件只读，MediaService 为 Worker 提供授权路径/沙箱句柄；导出只能进入独立 staging，验证后导入 CAS。禁止原始 `ui_control`、绝对路径导入、任意 `file.*`、偏好设置、下载和删除命令。
+- 预检 `media.status/findMissing`，完成时 `offlineMedia` 必须为空，否则即使 FilmCraft 返回成功也失败；占位画面永不进入 completed。
+- GUI 与 Agent 写同一 Revision。FilmCraft undo 只用于后端命令事务/专家探针，产品撤销由新 Revision 实现；不得让桌面 egui、headless MCP 和 daemon 同时写同一 `.fcproj`。
+- 后端不可用时保留失败及诊断。FilmCraft ↔ FFmpeg 的切换会改变色彩、效果或帧网格语义，必须产生新 Plan diff 并重新审批，不在同一 attempt 静默切换。
 
 ## 5. 数据与一致性
 
@@ -121,9 +129,9 @@ Android 通过配对后的直连或 E2EE relay 连接同一 daemon。手机退�
 
 ## 9. 上游与代码边界
 
-M0 根仓库以 `research/upstream.json` 锁定 Pi/Paseo，参考 checkout 被忽略，避免将嵌套仓库误提交为空目录。
+M0 根仓库以 `research/upstream.json` 锁定 Pi/Paseo/FilmCraft，参考 checkout 被忽略，避免将嵌套仓库误提交为空目录。FilmCraft 锁 `ba6fe105…`，其 Cargo.lock 和 craft-libs 依赖也必须完整锁定、审计和生成 SBOM。
 
-M1 若按当前设计实现 Paseo 内置插件，需要建立团队可访问的 Paseo downstream fork，并由根 superproject 以精确 gitlink 管理；Pi 默认上游只读。两套上游分别保留自己的 lockfile 和 `npm ci`，不强行合成一个 npm workspace。上游 bump 是独立 PR，必须通过兼容和发布矩阵。
+M1 若按当前设计实现 Paseo 内置插件，需要建立团队可访问的 Paseo downstream fork，并由根 superproject 以精确 gitlink 管理；Pi 默认上游只读，FilmCraft 优先保持无修改的独立二进制/库依赖。两套 Node 上游分别保留自己的 lockfile 和 `npm ci`，FilmCraft 保留 Cargo workspace，不强行合并构建系统。上游 bump 是独立 PR，必须通过兼容和发布矩阵。
 
 ## 10. 设计诊断
 

@@ -30,6 +30,17 @@
 - [x] 用临时根仓库和 `vendor/paseo` gitlink 实测统计聚合：K、L 各 1 提交和 2 行有效源码；统计提交前后 SVG 字节一致。
 - [x] 修复 gitlink 聚合的 HEAD 换行比较问题，并记录到 `task_plan.md`；用脏参考仓库负向测试确认校验退出码为 1。
 
+## 2026-11-25 · FilmCraft 增量调研与架构优化
+
+- [x] 固定 FilmCraft `ba6fe10529c7bf5d2a9283f9de2e35c0ccff926c`（0.20.1），核验 Cargo/craft-libs、engine/automation、导出、控制服务和许可源码；调研 PhotoCraft、EffectCraft、SoundCraft 官方材料。
+- [x] 选择共享 EditCommand/EditGraph + 可插拔确定性后端，不把原生 MCP/650+ 命令直接暴露给 Agent，不将 egui 作为主工作台，不形成第二套项目/Job 事实源。
+- [x] 明确 GUI 手动工具和 Agent 使用同一操作 schema、后端路由、Revision、审批和 QA；FilmCraft/FFmpeg 失败不静默互切，换后端必须新审批。
+- [x] 增加 FilmCraft capability、私有 snapshot/backendJobId 映射、actualEncoder/warnings/offlineMedia、后端错误码及 E13 双后端验收矩阵；离线占位成功为硬失败。
+- [x] 更新架构图、产品、Agent、媒体、客户端、接口、团队、发布、风险、上游锁和参考恢复脚本；Photo/Effect/SoundCraft 不进入首版。
+- [x] 主仓库与无 `.git`/参考检出的干净源码副本分别通过 18 份 Markdown、2 份 SVG 校验；架构图重新渲染检查，FilmCraft commit 与依赖锁核对通过。
+- [x] FilmCraft 以 `upstream.json` 明示的稀疏范围恢复并核验干净；完整历史恢复遇到多次网络 EOF，未完成全量源码包下载，中间状态保留为本地忽略备份。
+- [ ] 构建 FilmCraft 并执行 E13 真实媒体/性能/三平台对照；本轮只做源码与文档调研，不宣称后端已运行或已验收。
+
 ## 验证边界
 
 - 本次没有编写应用代码，没有构建 GUI/APK/安装包，没有运行模型、素材转码或效果 benchmark。

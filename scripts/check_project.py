@@ -104,15 +104,22 @@ def main() -> int:
         else:
             fail(errors, f"缺少 {name}")
     check_team(errors)
-    generated = subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "update_division.py"), "--check"],
-        cwd=ROOT,
+    repository = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", "--is-inside-work-tree"],
         check=False,
         capture_output=True,
         text=True,
     )
-    if generated.returncode:
-        fail(errors, generated.stderr.strip())
+    if repository.returncode == 0 and repository.stdout.strip() == "true":
+        generated = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "update_division.py"), "--check"],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if generated.returncode:
+            fail(errors, generated.stderr.strip())
     if errors:
         print("项目校验失败：", file=sys.stderr)
         for error in errors:

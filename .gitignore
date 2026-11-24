@@ -1,6 +1,9 @@
 # Local reference checkouts. Restore exact revisions with scripts/bootstrap_references.py.
 /pi/
 /paseo/
+/filmcraft/
+/.filmcraft-incomplete-backup/
+/references/
 
 # Local session evidence and large source material.
 /1.txt

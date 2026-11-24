@@ -21,6 +21,13 @@
 - [x] Phase 9：补齐 README、AGENTS/CLAUDE、贡献规范、路线图、进度数据、Git hooks/CI 等工作流文件
 - [x] Phase 10：初始化根 Git 仓库，验证文档链接、SVG、脚本、统计口径和读者可理解性
 
+## Filmcraft 增量调研与设计优化
+
+- [x] Phase 11：固定 filmcraft 版本，审查源码、实际能力、依赖、许可、维护状态与同组织相关项目
+- [x] Phase 12：比较“整体封装 / 拆分适配 / 不采用”方案，确定 Agent 与 GUI 的共享能力边界及失败降级
+- [x] Phase 13：将选定方案同步到上游锁、架构、工具契约、媒体流水线、客户端、分工、测试和风险文档
+- [ ] Phase 14：运行文档、链接、SVG、统计与干净克隆校验，记录未执行的真实媒体/模型验证边界并提交
+
 ## 已确定的原则
 
 - 优先复用上游扩展接口，避免 fork 后难以跟进。
@@ -56,3 +63,15 @@
 | 自进化验证脚本一度使用不存在的 lesson key `bash_timeout` | 改用实际 `long_command`；随后确认五端使用 compose 后的规则文本 |
 | 统计脚本对临时测试仓库输出调用 `relative_to(ROOT)` 失败 | 输出实际路径，重新验证提交归属、有效行与统计提交自引用稳定性 |
 | gitlink 聚合将带换行的 `rev-parse` 输出与无换行索引 SHA 比较，导致 downstream 永远不计入 | 对实际 HEAD 使用 `.strip()`；以根仓库和 downstream 各 1 提交、2 行有效源码的临时仓库回归 |
+| FilmCraft 调研资料首次写入误放在第 3 节中部 | 移至文件末尾独立的第 13 节，保持既有章节结构 |
+| zsh 未引用 GitHub API URL 中的 `?` | 给 URL 加引号；API 随后返回 403，不把 403 当作仓库不存在，改用官方页面与 git 协议调研 |
+| FilmCraft 普通 git clone 超过 300 秒转为后台，最终 HTTP/2 EOF | 改用 HTTP/1.1、depth 1、blob:none 稀疏克隆，固定源码并核验成功；恢复脚本也固定 HTTP/1.1 |
+| FilmCraft 章节删除首次因“手动/手動”字符不匹配失败 | 重新读取精确区域后仅移除重复块，末尾保留一份完整调研 |
+| FilmCraft 专项测试首次替换吞掉故障矩阵列表并形成重复标题 | 重读区域后恢复完整故障列表，再追加独立 3.4 节 |
+| 后端错误码编辑误用列表缩进导致无匹配 | 读取实际无缩进文本后重新应用唯一替换 |
+| FilmCraft 恢复 checkout 超过 300 秒，后续 checkout 遇 index.lock | 查明锁由正在进行的按需 blob 下载持有，不删除锁；checkout 超时改 900 秒并显式 HTTP/1.1，等待进程自然结束后再验证 |
+| depth 1 的默认分支克隆不能覆盖任意历史 commit 锁 | 改为 init + 精确 commit fetch depth 1 + FETCH_HEAD checkout；本地非默认历史提交恢复实测通过 |
+| 工作区出现非本轮创建的 references/sam2、vace、pyscenedetect | 不修改/删除/提交这些检出；根 .gitignore 排除 references/ |
+| 无 .git 副本的统计校验将 unborn 与真实历史 SVG 比较失败 | check_project 先探测真实 worktree；普通源码副本跳过历史统计，真实 clone 仍强制匹配，分别回归 |
+| FilmCraft 按需 blob 下载连接重置并留下空 index.lock | 确认对应进程全部退出后删除该陈旧锁，以 HTTP/1.1 后台重试固定提交；不把失败或中间状态记为恢复成功 |
+| 完整恢复反复触发历史 blob EOF，硬重置被权限拒绝 | 不绕过权限；manifest 明确稀疏调研范围，使用已核验干净稀疏树替换新路径，原中间状态保留于本地忽略备份；三参考仓库最终校验通过 |

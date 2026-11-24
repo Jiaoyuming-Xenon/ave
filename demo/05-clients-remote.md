@@ -15,7 +15,11 @@ Expo Web/Android 共享 DTO、状态选择器、基础 RN 组件和面板壳，�
 1. **项目/镜头栏**：导入、媒体/后端状态、镜头列表、任务队列和磁盘/GPU 指标。
 2. **预览与时间线**：原/结果、并排、帧步进、时间码、音频、mask/锚点叠加、失败区间。
 3. **Agent 会话**：消息、工具摘要、计划 diff、候选帧、澄清和审批卡；进度只来自 daemon。
-4. **检查器**：操作参数、mask 修正、后端/seed、QA、导出 profile、Revision 历史。
+4. **检查器**：操作参数、mask 修正、确定性后端/模型/seed、QA、导出 profile、Revision 历史。
+
+FilmCraft 支持的手动动作（trim、效果、调色、混音等）与 Agent 生成的操作使用同一 command schema、后端路由和 Revision。按钮只提交领域操作，不直接调用 FilmCraft MCP、TCP 或 `filmcraft-cli`；执行结果返回同一 Job/预览/QA 面板。首版不嵌入 FilmCraft egui/WASM 作为第二编辑器，也不让它持有独立 `.fcproj` 主项目。
+
+后续如提供“FilmCraft 专家窗口”，它只编辑当前 Revision 的派生副本，使用本地 token、受限工作区和显式“重导入为新 Revision”；不能绕审批修改主项目、访问原始素材目录或由手机直接控制。
 
 `PluginTab.state` 只保存选中轨道、缩放、滚动和预览模式；Project/EditGraph/Job 永远存 daemon。组件只发 command，不持有任务生命周期。
 

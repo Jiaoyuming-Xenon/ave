@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 900" role="img" aria-labelledby="title desc">
   <title id="title">Agentic Video Editor 总体架构</title>
-  <desc id="desc">桌面和 Android 客户端通过受控协议连接 Paseo daemon。视频领域服务唯一拥有 Pi 会话和 EditJob，FFmpeg 与 Python Worker 通过受控进程协议执行。源资产不可变，移动端不能绕过服务端审批。</desc>
+  <desc id="desc">桌面和 Android 客户端通过受控协议连接 Paseo daemon。视频领域服务唯一拥有 Pi 会话和 EditJob，共享 EditCommand 由 FilmCraft 或 FFmpeg 确定性后端执行，Python Worker 负责生成。源资产不可变，移动端和 Agent 不能绕过服务端审批或调用原生 FilmCraft MCP。</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0 0L10 5L0 10Z" fill="currentColor"/>
@@ -62,10 +62,10 @@
     <text x="60" y="770" font-size="12" opacity="0.65">无通用 shell / 无审批权</text>
 
     <rect x="360" y="660" width="280" height="132" rx="12" fill="var(--surface)" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.35"/>
-    <text x="380" y="690" font-size="17" font-weight="700">FFmpeg / ffprobe</text>
-    <text x="380" y="718" font-size="13">参数数组 argv · 不经 shell</text>
-    <text x="380" y="742" font-size="13">探测 / 确定性编辑 / 合成 / 导出</text>
-    <text x="380" y="770" font-size="12" opacity="0.65">显式流映射 / PTS / 全片解码 QA</text>
+    <text x="380" y="690" font-size="17" font-weight="700">确定性编辑后端</text>
+    <text x="380" y="718" font-size="13">FilmCraft adapter / FFmpeg</text>
+    <text x="380" y="742" font-size="13">共享 EditCommand · 受控独立进程</text>
+    <text x="380" y="770" font-size="12" opacity="0.65">能力矩阵路由 / 禁止原生 MCP 直通</text>
 
     <rect x="680" y="660" width="280" height="132" rx="12" fill="var(--surface)" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.35"/>
     <text x="700" y="690" font-size="17" font-weight="700">Python Video Worker</text>
