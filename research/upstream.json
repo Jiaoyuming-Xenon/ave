@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "references": [
+    {
+      "path": "pi",
+      "url": "https://github.com/earendil-works/pi.git",
+      "commit": "fcc33744b072b9bb5529fa4ff8b151f9fa578e14",
+      "versionAtResearch": "1.5.2",
+      "licenseAtResearch": "MIT"
+    },
+    {
+      "path": "paseo",
+      "url": "https://github.com/getpaseo/paseo.git",
+      "commit": "c626bf37071491981fc8e11c3e2f4df093381d37",
+      "versionAtResearch": "0.17.4",
+      "licenseAtResearch": "Apache-2.0"
+    }
+  ]
+}

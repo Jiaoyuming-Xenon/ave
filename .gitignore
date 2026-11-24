@@ -1,0 +1,41 @@
+# Local reference checkouts. Restore exact revisions with scripts/bootstrap_references.py.
+/pi/
+/paseo/
+
+# Local session evidence and large source material.
+/1.txt
+/*.pdf
+/research/sources/
+
+# Python.
+__pycache__/
+*.py[cod]
+.venv/
+
+# JavaScript and application build outputs.
+node_modules/
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+
+# Native installers, media, caches and secrets.
+*.AppImage
+*.apk
+*.dmg
+*.exe
+*.mp4
+*.mov
+*.mkv
+*.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+Thumbs.db
+
+# Generated previews must not replace the tracked source SVG.
+/DIVISION.preview.png
+/ARCHITECTURE.preview.png

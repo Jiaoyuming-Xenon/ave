@@ -1,0 +1,13 @@
+* text=auto eol=lf
+*.svg text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.mp4 binary
+*.apk binary
+*.dmg binary
+*.exe binary
+*.AppImage binary
+package-lock.json -text
+pnpm-lock.yaml -text

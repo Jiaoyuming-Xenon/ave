@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "project": "Agentic Video Editor",
+  "members": [
+    {
+      "id": "lead",
+      "name": "K",
+      "role": "总体架构、后端、跨端集成",
+      "identities": {
+        "names": ["K", "player-Muteki"],
+        "emails": ["3219095629@qq.com"]
+      }
+    },
+    {
+      "id": "l",
+      "name": "L",
+      "role": "后端、媒体 Worker 与任务运行时",
+      "identities": {
+        "names": ["L"],
+        "emails": []
+      }
+    },
+    {
+      "id": "j",
+      "name": "J",
+      "role": "Android、远程控制与移动端验收",
+      "identities": {
+        "names": ["J"],
+        "emails": []
+      }
+    },
+    {
+      "id": "c",
+      "name": "C",
+      "role": "桌面端、远程控制与桌面端验收",
+      "identities": {
+        "names": ["C"],
+        "emails": []
+      }
+    }
+  ],
+  "workstreams": [
+    {
+      "id": "architecture-baseline",
+      "title": "总体架构、领域边界与接口基线",
+      "owners": ["lead"],
+      "status": "done",
+      "evidence": "demo/02-architecture.md; demo/06-interfaces.md"
+    },
+    {
+      "id": "backend-contract",
+      "title": "后端数据模型、任务状态机与工具协议设计",
+      "owners": ["lead", "l"],
+      "status": "done",
+      "evidence": "demo/03-agent-runtime.md; demo/04-media-pipeline.md"
+    },
+    {
+      "id": "workflow-baseline",
+      "title": "团队并行、文档校验与统计自动化",
+      "owners": ["lead"],
+      "status": "done",
+      "evidence": "demo/07-team-workflow.md; scripts/update_division.py"
+    },
+    {
+      "id": "integration-probes",
+      "title": "Pi/Paseo 集成探针与跨域 ADR 评审",
+      "owners": ["lead", "l", "j", "c"],
+      "status": "planned",
+      "evidence": "demo/08-delivery.md"
+    },
+    {
+      "id": "backend-core",
+      "title": "项目存储、JobRunner、ToolGateway 与恢复实现",
+      "owners": ["lead", "l"],
+      "status": "planned",
+      "evidence": "demo/08-delivery.md"
+    },
+    {
+      "id": "media-worker",
+      "title": "FFmpeg、mask、生成 Worker、合成与 QA 实现",
+      "owners": ["l"],
+      "status": "planned",
+      "evidence": "demo/04-media-pipeline.md"
+    },
+    {
+      "id": "desktop-editor",
+      "title": "Electron 桌面工作台、时间线与导出交互",
+      "owners": ["c"],
+      "status": "planned",
+      "evidence": "demo/05-clients-remote.md"
+    },
+    {
+      "id": "android-supervision",
+      "title": "Android 会话、预览、审批、取消与下载",
+      "owners": ["j"],
+      "status": "planned",
+      "evidence": "demo/05-clients-remote.md"
+    },
+    {
+      "id": "remote-control",
+      "title": "配对、权限、断线恢复与双端远程联调",
+      "owners": ["j", "c"],
+      "status": "planned",
+      "evidence": "demo/05-clients-remote.md"
+    },
+    {
+      "id": "release-validation",
+      "title": "三桌面平台与 Android 真机发布验收",
+      "owners": ["lead", "l", "j", "c"],
+      "status": "planned",
+      "evidence": "demo/08-delivery.md"
+    }
+  ]
+}
