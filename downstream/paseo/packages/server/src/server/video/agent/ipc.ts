@@ -53,8 +53,6 @@ export const DaemonInitSchema = z
     projectId: id,
     runId: id,
     sessionId: id,
-    workspace: z.string().min(1),
-    model: z.object({ provider: z.string().min(1), id: z.string().min(1) }).strict(),
     promptSignature: z.string().regex(/^[0-9a-f]{64}$/),
   })
   .strict();
@@ -105,7 +103,7 @@ export class IpcChannel<In extends { kind: string }, Out> {
   private buffer = "";
   private readonly pending = new Map<
     string,
-    { settle: (value: In) => void; timer: NodeJS.Timeout }
+    { settle: (value: In) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }
   >();
 
   private onMessage: (message: In) => void | Promise<void>;
@@ -171,14 +169,16 @@ export class IpcChannel<In extends { kind: string }, Out> {
         this.pending.delete(message.requestId);
         reject(new Error(`IPC request ${message.requestId} timed out`));
       }, this.requestTimeoutMs);
-      this.pending.set(message.requestId, { settle: resolve, timer });
+      this.pending.set(message.requestId, { settle: resolve, reject, timer });
       this.output.write(JSON.stringify(message) + "\n");
     });
   }
 
   private failAll(error: Error): void {
-    for (const { timer } of this.pending.values()) clearTimeout(timer);
+    for (const { timer, reject } of this.pending.values()) {
+      clearTimeout(timer);
+      reject(error);
+    }
     this.pending.clear();
-    void error;
   }
 }

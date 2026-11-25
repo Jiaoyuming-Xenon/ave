@@ -45,6 +45,7 @@ export class EditorService {
   async start(): Promise<void> {
     await this.cas.initialize();
     await this.access.initialize();
+    this.agents.reconcile(this.store.projectsWithPlanningEvents(), this.principalForOwner());
     this.jobs.start();
   }
 

@@ -47,9 +47,8 @@ async function main(): Promise<void> {
           runId: message.runId,
           sessionId: message.sessionId,
           workspace,
-          model: message.model,
           promptSignature: message.promptSignature,
-          channel: channel as never,
+          channel,
           onEvent: (event) => send({ kind: "event", event }),
         });
         send({

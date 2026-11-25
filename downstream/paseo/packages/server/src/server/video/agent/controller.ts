@@ -2,7 +2,6 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID } from "node:crypto";
 import type {
   EditorPrincipal,
   StartPlanningRunInput,
@@ -15,7 +14,6 @@ import {
   DaemonToWorkerSchema,
   IpcChannel,
   WorkerToDaemonSchema,
-  newRequestId,
   type DaemonToWorker,
   type WorkerToDaemon,
 } from "./ipc.js";
@@ -37,6 +35,7 @@ interface RunHandle {
   child: ChildProcess;
   channel: IpcChannel<WorkerToDaemon, DaemonToWorker>;
   broker: VideoToolBroker;
+  initialPrompt?: string;
   state: PlanningRunStatus["state"];
   workerPid?: number;
 }
@@ -57,7 +56,7 @@ export class AgentRunController {
     for (const projectId of projectIds) {
       const states = this.store.runLifecycle(projectId, principal);
       for (const entry of states) {
-        if (entry.state === "running" || entry.state === "awaiting_input") {
+        if (entry.state === "started" || entry.state === "running" || entry.state === "awaiting_input") {
           this.store.recordExternalEvent(
             projectId,
             "run.interrupted",
@@ -70,10 +69,11 @@ export class AgentRunController {
   }
 
   async startRun(input: StartPlanningRunInput, principal: EditorPrincipal) {
-    const project = this.store.project(input.projectId, principal);
-    void project;
-    const runId = newRequestId();
-    const sessionId = randomUUID();
+    this.store.authorizeProject(input.projectId, principal, "operator");
+    if (input.model) editorFailure("CAPABILITY_UNAVAILABLE", "Explicit model selection is not configured");
+    const { receipt, created } = this.store.reservePlanningRun(input.projectId, input.requestId, input.prompt, principal);
+    if (!created) return receipt;
+    const { runId, sessionId } = receipt;
     const entry = path.join(fileURLToPath(new URL(".", import.meta.url)));
     const workerJs = path.join(entry, "worker-main.js");
     const useTsx = !existsSync(workerJs);
@@ -86,6 +86,7 @@ export class AgentRunController {
       runId,
       sessionId,
       principal,
+      initialPrompt: input.prompt,
       child,
       channel: undefined as never,
       broker: new VideoToolBroker(this.store, { projectId: input.projectId, runId, principal }),
@@ -120,29 +121,24 @@ export class AgentRunController {
         projectId: input.projectId,
         runId,
         sessionId,
-        workspace: "",
-        model: input.model ?? { provider: "host-default", id: "host-default" },
         promptSignature: videoPlannerPromptSignature(),
       },
       DaemonToWorkerSchema,
     );
 
-    this.store.recordExternalEvent(
-      input.projectId,
-      "run.started",
-      { runId, sessionId, principalId: principal.principalId },
-      principal,
-    );
     this.runs.set(runId, handle);
 
-    channel.send({ kind: "prompt", text: input.prompt });
     return { runId, projectId: input.projectId, sessionId, state: "running" as const };
   }
 
   private async onWorkerMessage(handle: RunHandle, message: WorkerToDaemon): Promise<void> {
     switch (message.kind) {
       case "hello":
+        if (handle.initialPrompt === undefined || message.runId !== handle.runId ||
+            message.sessionId !== handle.sessionId || handle.state !== "running") break;
         handle.workerPid = message.workerPid;
+        handle.channel.send({ kind: "prompt", text: handle.initialPrompt });
+        delete handle.initialPrompt;
         break;
       case "tool_call": {
         try {
@@ -195,14 +191,14 @@ export class AgentRunController {
     const handle = this.handle(input.runId, input.projectId);
     this.store.authorizeProject(input.projectId, principal, "operator");
     handle.channel.send({ kind: "steer", text: input.text });
-    return { runId: input.runId, state: handle.state };
+    return { projectId: input.projectId, runId: input.runId, state: handle.state };
   }
 
   followUp(input: SteerPlanningRunInput, principal: EditorPrincipal) {
     const handle = this.handle(input.runId, input.projectId);
     this.store.authorizeProject(input.projectId, principal, "operator");
     handle.channel.send({ kind: "follow_up", text: input.text });
-    return { runId: input.runId, state: handle.state };
+    return { projectId: input.projectId, runId: input.runId, state: handle.state };
   }
 
   async stopRun(

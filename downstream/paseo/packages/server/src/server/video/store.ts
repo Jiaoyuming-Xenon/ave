@@ -992,6 +992,25 @@ export class EditorStore {
     this.emit(projectId, type, payload);
   }
 
+  /** Reserve the persistent receipt and first event atomically, before spawning a worker. */
+  reservePlanningRun(projectId: string, requestId: string, prompt: string, principal: EditorPrincipal) {
+    this.authorize(projectId, principal, "operator");
+    let created = false;
+    const receipt = this.mutate({ projectId, requestId, payload: { method: "start_planning_run", prompt, principalId: principal.principalId }, execute: () => {
+      const runId = randomUUID();
+      const sessionId = randomUUID();
+      const result = { projectId, runId, sessionId, state: "running" as const };
+      this.emit(projectId, "run.running", { runId, sessionId, principalId: principal.principalId });
+      created = true;
+      return result;
+    } });
+    return { receipt, created };
+  }
+
+  projectsWithPlanningEvents(): string[] {
+    return this.rows("SELECT DISTINCT project_id FROM events WHERE json_extract(document, '$.type') LIKE 'run.%'");
+  }
+
   /** Latest lifecycle state per planning run, derived from the persisted event log. */
   runLifecycle(
     projectId: string,
@@ -999,7 +1018,7 @@ export class EditorStore {
   ): Array<{ runId: string; state: string }> {
     this.authorize(projectId, principal, "viewer");
     const documents = this.rows(
-      "SELECT document FROM events WHERE project_id = ? AND type LIKE 'run.%' ORDER BY CAST(seq AS INTEGER)",
+      "SELECT document FROM events WHERE project_id = ? AND json_extract(document, '$.type') LIKE 'run.%' ORDER BY CAST(seq AS INTEGER)",
       projectId,
     );
     const states = new Map<string, string>();
@@ -1079,18 +1098,19 @@ export class EditorStore {
       ),
     );
     assertRenderablePreview(draft);
-    const operation = draft.trimOperations[0]!;
-    const asset = assets.get(operation.source.assetId);
-    if (!asset || asset.original.sha256 !== operation.source.assetContentHash)
-      editorFailure("PLAN_SEMANTIC_INVALID", "The trim refers to a missing or changed asset");
-    if (
-      !asset.streams.some(
-        (stream) => stream.streamUid === operation.source.streamUid && stream.kind === "video",
+    for (const operation of draft.trimOperations) {
+      const asset = assets.get(operation.source.assetId);
+      if (!asset || asset.original.sha256 !== operation.source.assetContentHash)
+        editorFailure("PLAN_SEMANTIC_INVALID", "The trim refers to a missing or changed asset");
+      if (
+        !asset.streams.some(
+          (stream) => stream.streamUid === operation.source.streamUid && stream.kind === "video",
+        )
       )
-    )
-      editorFailure("PLAN_SEMANTIC_INVALID", "The trim must select an existing video stream");
-    this.validateRange(operation.sourceRange);
-    this.validateRange(operation.recordRange);
+        editorFailure("PLAN_SEMANTIC_INVALID", "The trim must select an existing video stream");
+      this.validateRange(operation.sourceRange);
+      this.validateRange(operation.recordRange);
+    }
   }
 
   private validateRange(range: {
@@ -1208,6 +1228,8 @@ export class EditorStore {
       protocolVersion: "1",
       projectId,
       eventId: randomUUID(),
+      ...(type.startsWith("run.") && payload && typeof payload === "object" && "runId" in payload
+        ? { runId: payload.runId } : {}),
       seq,
       occurredAt: this.now(),
       type,

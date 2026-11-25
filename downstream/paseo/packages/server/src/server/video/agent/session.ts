@@ -21,7 +21,7 @@ interface PiSession {
   steer(text: string): Promise<unknown>;
   followUp(text: string): Promise<unknown>;
   abort(): Promise<void>;
-  dispose(): Promise<void>;
+  dispose(): void;
   subscribe(listener: (event: unknown) => void): void;
   getActiveToolNames(): string[];
   getCallableToolNames(): string[];
@@ -160,6 +160,6 @@ export async function createPlannerSession(options: PlannerSessionOptions) {
     steer: (text: string) => session.steer(text),
     followUp: (text: string) => session.followUp(text),
     abort: () => session.abort(),
-    dispose: () => session.dispose(),
+    dispose: async () => session.dispose(),
   };
 }

@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { editorFailure } from "./errors.js";
+import { EditorError, editorFailure } from "./errors.js";
 
 /**
  * Runner for the closed Python media kernels in plugins/video-editor/worker.
@@ -53,6 +53,7 @@ export class PyWorker {
 
   private run(args: string[], input: string, signal: AbortSignal, timeoutMs = 60_000): Promise<string> {
     return new Promise((resolve, reject) => {
+      if (signal.aborted) throw new EditorError("CANCELLED", "Analysis interrupted");
       let child;
       try {
         child = spawn("python3", ["-I", path.join(this.workerDir(), "daemon_cli.py"), ...args], {
@@ -70,7 +71,7 @@ export class PyWorker {
       }, timeoutMs);
       const onAbort = () => {
         child.kill("SIGKILL");
-        reject(new Error("CANCELLED"));
+        reject(new EditorError("CANCELLED", "Analysis interrupted"));
       };
       signal.addEventListener("abort", onAbort, { once: true });
       child.stdout.on("data", (chunk) => (stdout += chunk));

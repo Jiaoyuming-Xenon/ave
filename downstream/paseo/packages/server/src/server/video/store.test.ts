@@ -132,6 +132,33 @@ describe("EditorStore durable workflow", () => {
     store.close();
   });
 
+  it("checks each trim before creating an approval", async () => {
+    const { store, cas, project } = await fixture();
+    try {
+      const blob = await cas.writeBytes(Buffer.from("two-trim fixture"), "video/mp4");
+      await store.addAsset(project.projectId, {
+        assetId: "source", original: blob, displayName: "fixture.mp4",
+        streams: [{ streamUid: "stream:0", streamIndex: 0, kind: "video", codec: "h264", timeBase: { num: "1", den: "25" }, disposition: {} }],
+        presentationIndex: blob, probe: blob, sourceNeverWritable: true,
+      }, "asset", owner);
+      const plan = draft(store.project(project.projectId, owner));
+      const second = structuredClone(plan.draft.trimOperations[0]!);
+      Object.assign(second, { opId: "trim-2", order: "2", clipId: "clip-2" });
+      second.recordRange.start.num = "1";
+      plan.draft.trimOperations.push(second);
+      second.source.assetContentHash = "0".repeat(64);
+      expect(() => store.createPlan(plan)).toThrow("missing or changed asset");
+      second.source.assetContentHash = blob.sha256;
+      second.sourceRange.start.num = "-1";
+      expect(() => store.createPlan(plan)).toThrow("non-negative");
+      expect(store.project(project.projectId, owner).approvals).toHaveLength(0);
+      second.sourceRange.start.num = "2";
+      expect(store.createPlan(plan).approval.status).toBe("pending");
+    } finally {
+      store.close();
+    }
+  });
+
   it("persists a rejected preview without granting or starting work on replay", async () => {
     const f = await fixture();
     let store = f.store;
