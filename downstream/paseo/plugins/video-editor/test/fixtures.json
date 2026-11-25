@@ -186,5 +186,29 @@
     "schema": "EditorEvent",
     "valid": false,
     "value": { "protocolVersion": "1", "projectId": "p", "eventId": "e", "seq": "8", "occurredAt": "2026-11-25T10:00:00Z", "type": "", "payload": {} }
+  },
+  {
+    "name": "artifact references a reviewed candidate",
+    "schema": "ArtifactRef",
+    "valid": true,
+    "value": { "artifactId": "a", "projectId": "p", "jobId": "j", "revision": "1", "kind": "candidate", "blob": { "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": "100", "mediaType": "video/mp4" } }
+  },
+  {
+    "name": "artifact kind is enumerated",
+    "schema": "ArtifactRef",
+    "valid": false,
+    "value": { "artifactId": "a", "projectId": "p", "jobId": "j", "revision": "1", "kind": "unknown", "blob": { "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": "100", "mediaType": "video/mp4" } }
+  },
+  {
+    "name": "source asset is never writable",
+    "schema": "SourceAsset",
+    "valid": true,
+    "value": { "assetId": "asset", "original": { "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": "100", "mediaType": "video/mp4" }, "displayName": "clip.mp4", "streams": [{ "streamUid": "stream:0", "streamIndex": 0, "kind": "video", "codec": "h264", "timeBase": { "num": "1", "den": "30" }, "disposition": {} }], "presentationIndex": { "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": "100", "mediaType": "application/json" }, "probe": { "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": "100", "mediaType": "application/json" }, "sourceNeverWritable": true }
+  },
+  {
+    "name": "source asset cannot be marked writable",
+    "schema": "SourceAsset",
+    "valid": false,
+    "value": { "assetId": "asset", "original": { "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": "100", "mediaType": "video/mp4" }, "displayName": "clip.mp4", "streams": [], "presentationIndex": { "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": "100", "mediaType": "application/json" }, "probe": { "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": "100", "mediaType": "application/json" }, "sourceNeverWritable": false }
   }
 ]

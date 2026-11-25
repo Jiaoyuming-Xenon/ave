@@ -18,7 +18,7 @@
 | ② Android 真机/打包 | 需真机＋electron 打包 | 本机无真机、build OOM | 环境阻塞 |
 | ② native 源素材导入 | 需 expo-crypto 二进制 digest | API 不可核实，盲写风险高，暂不做 | 暂缓 |
 
-本机真实运行汇总：**18 文件 101 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 25 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
+本机真实运行汇总：**18 文件 105 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 29 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
 
 ### 复现验收方法（OOM 受限环境，2CPU/3.9GB）
 
@@ -120,6 +120,7 @@
 - 契约 fixtures 再扩充（已运行通过，TS＋Python 双测）：`fixtures.json` 再增 4 样例——CreateJobRequest（绑定 approval/grant/revision 的合法请求 vs expectedRevision 为 JSON 数字拒绝，须 uint 字符串）、UploadStatus（可续传 offset 合法 vs 负 nextOffset 拒绝）。本机真实运行 TS contracts 22 项＋Python「22 wire fixtures against 40 offline definitions」双过（累计 18 文件 97 项 TS 测试绿）。
 - 事件 wire 契约 fixtures（已运行通过，TS＋Python 双测）：`fixtures.json` 增 3 个 EditorEvent 样例——合法终态 job.state.changed 事件（设备对账依赖，ISO datetime/uint seq/非空 type）、seq 为 JSON 数字拒绝、空 type 拒绝。本机真实运行 TS contracts 25 项＋Python「25 wire fixtures against 40 offline definitions」双过。**累计 18 文件 100 项 TS 测试绿**。
 - 恢复状态矩阵测试（已运行通过）：`job-recovery.test.ts` 增用例固化 `recoverJobs` 矩阵——rendering_preview/rendering_final/validating/analyzing/pausing/cancel_requested 六个在途态重启后均落 failed（NEEDS_RECONCILIATION，retryable）；awaiting_review/paused 等已结算态保持不动。夹具加 state 参数（默认 rendering_preview 不影响原用例）。本机 vitest 真实运行 job-recovery 2 项全过（累计 18 文件 101 项 TS 测试绿）。
+- 核心数据形状 fixtures（已运行通过，TS＋Python 双测）：`fixtures.json` 增 4 样例——ArtifactRef（合法 candidate 引用 vs 未知 kind 拒绝，kind 枚举 probe/proxy/mask/candidate/export/qa/manifest）、SourceAsset（合法只读源素材 vs sourceNeverWritable=false 拒绝，须 literal true）。本机真实运行 TS contracts 29 项＋Python「29 wire fixtures against 40 offline definitions」双过（累计 18 文件 105 项 TS 测试绿）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
