@@ -65,6 +65,7 @@
 - shot-index 可执行测试（已运行通过）：新增 `test/test_shot_index.py`（numpy+scenedetect），本机 `python3` 真实执行「PASS: 10 checks」。覆盖 time_base 非 Fraction/非正拒绝、空帧拒绝、非整 PTS/非正 duration 拒绝、PTS 非递增拒绝、BGR dtype/几何变化拒绝，以及均匀帧序列形成单一半开区间 Shot(0,5,0,50)。至此三个确定性 worker 内核（sampling-map/protected-composite/shot-index）均在本机真实验收。环境为此安装了 scenedetect 0.7.3（numpy 随之升至 2.5.5，复跑前两个内核测试仍通过）。
 - ffmpeg 渲染能力验证（已运行）：用 `.tools/bin/ffmpeg`（BtbN master 静态构建）真实执行 `media.ts` preview 渲染参数——`testsrc` 生成源后 `trim=start=0:duration=1,setpts=PTS-STARTPTS,scale=640:360:force_original_aspect_ratio=decrease,pad=...,setsar=1 -fps_mode vfr -enc_time_base:v filter -c:v libx264 -pix_fmt yuv420p -movflags +faststart`，成功输出 h264 640×360（13579 字节）。证实确定性渲染后端所需的新版 ffmpeg 标志在本机可用（系统 /usr/bin/ffmpeg 4.4 不支持 -fps_mode/-enc_time_base）。属 goal② 媒体后端工具链验收；完整 media.executeJob 仍因 node 依赖缺失未跑。
 - grants principal 索引（代码已写，未运行）：`store.ts` SCHEMA 增 `CREATE INDEX IF NOT EXISTS idx_project_grants_principal ON project_grants(principal_id)`。复合主键 (project_id, principal_id) 以 project_id 领先，设备 `listProjects` 按 principal_id JOIN 原本需扫描；该索引加速之。幂等、不改 formatVersion（仍 "1"），旧库下次打开自动建索引。未运行 Vitest。
+- 发现（已核查，未改行为）：`outbox` 表在全仓库（ripgrep 所有 packages/*.ts）仅 `store.ts` 引用，且只有 `emit()` 的 INSERT 与建表，无任何 SELECT/DELETE/消费方。它与 `events` 表逐行重复（同 event_id/project_id/seq/document），而 `get_events` 读的是 `events`，故 outbox 当前是只写、无界增长的冗余表（疑似为 relay 推送预留但未接线）。建议 owner 要么接上消费方并按消费游标清理，要么设定保留窗口定期 prune；因保留策略属设计决策、且无消费游标可依据，本轮不臆测删数据以免丢失未来消费方所需事件。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
