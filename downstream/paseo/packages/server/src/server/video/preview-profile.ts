@@ -1,7 +1,22 @@
-import type { EditPlanDraftV1 } from "#video-editor/contracts/v1";
+import type { EditPlanDraftV1, Rational } from "#video-editor/contracts/v1";
 import { editorFailure } from "./errors.js";
 
-/** Keep unverified operations out of approvals and re-check persisted plans before dispatch. */
+function rationalEquals(a: Rational, b: Rational): boolean {
+  return BigInt(a.num) * BigInt(b.den) === BigInt(b.num) * BigInt(a.den);
+}
+
+function rationalAdd(a: Rational, b: Rational): Rational {
+  return {
+    num: (BigInt(a.num) * BigInt(b.den) + BigInt(b.num) * BigInt(a.den)).toString(),
+    den: (BigInt(a.den) * BigInt(b.den)).toString(),
+  };
+}
+
+/**
+ * Keep unverified operations out of approvals and re-check persisted plans before dispatch.
+ * The preview profile supports contiguous multi-segment trims over one video stream of one
+ * asset: record ranges tile [0, total) in order and no segment is retimed.
+ */
 export function assertRenderablePreview(draft: EditPlanDraftV1): void {
   const unsupported = [
     draft.transformOperations,
@@ -14,19 +29,33 @@ export function assertRenderablePreview(draft: EditPlanDraftV1): void {
   ];
   if (
     draft.preferredDeterministicBackendId === "filmcraft" ||
-    draft.trimOperations.length !== 1 ||
     unsupported.some((ops) => ops.length > 0)
   )
-    editorFailure("CAPABILITY_UNAVAILABLE", "This preview profile supports one FFmpeg trim only");
-  const { sourceRange, recordRange } = draft.trimOperations[0]!;
-  const a = sourceRange.duration;
-  const b = recordRange.duration;
-  if (
-    BigInt(recordRange.start.num) !== 0n ||
-    BigInt(a.num) * BigInt(b.den) !== BigInt(b.num) * BigInt(a.den)
-  )
-    editorFailure(
-      "CAPABILITY_UNAVAILABLE",
-      "Timeline gaps and retiming are not supported by this preview profile",
-    );
+    editorFailure("CAPABILITY_UNAVAILABLE", "This preview profile supports FFmpeg trims only");
+  const ops = draft.trimOperations;
+  if (ops.length === 0)
+    editorFailure("CAPABILITY_UNAVAILABLE", "At least one trim operation is required");
+  const first = ops[0]!;
+  let cursor: Rational = { num: "0", den: "1" };
+  for (const op of ops) {
+    if (
+      op.source.assetId !== first.source.assetId ||
+      op.source.streamUid !== first.source.streamUid
+    )
+      editorFailure(
+        "CAPABILITY_UNAVAILABLE",
+        "Multi-asset or multi-stream plans are not supported by this preview profile",
+      );
+    if (!rationalEquals(op.recordRange.start, cursor))
+      editorFailure(
+        "CAPABILITY_UNAVAILABLE",
+        "Timeline gaps or overlaps are not supported by this preview profile",
+      );
+    if (!rationalEquals(op.sourceRange.duration, op.recordRange.duration))
+      editorFailure(
+        "CAPABILITY_UNAVAILABLE",
+        "Retiming is not supported by this preview profile",
+      );
+    cursor = rationalAdd(cursor, op.recordRange.duration);
+  }
 }

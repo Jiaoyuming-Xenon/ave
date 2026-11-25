@@ -13,7 +13,7 @@ import {
   type ApprovalRequest, type BlobRef, type EditorEvent, type PlanningRunStatus, type ProjectSnapshot,
 } from "../shared/contracts/v1.js";
 import { ReviewPlayer } from "./review-player.js";
-import { proposeCut } from "./cut.js";
+import { proposeCut, proposeCutOut } from "./cut.js";
 import { SourceImport } from "./import-source.js";
 import { mountSourcePicker, digestSource } from "./web.js";
 
@@ -54,6 +54,9 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const [openMedia, setOpenMedia] = useState("");
   const [start, setStart] = useState("0");
   const [end, setEnd] = useState("1");
+  const [cutStart, setCutStart] = useState("0.5");
+  const [cutEnd, setCutEnd] = useState("1.5");
+  const [totalSec, setTotalSec] = useState("3");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [planPrompt, setPlanPrompt] = useState("");
@@ -291,6 +294,22 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
               </View>
               {button("提交裁剪方案", async () => {
                 const draft = proposeCut(project, selected, start, end);
+                const token = requestId(JSON.stringify(draft));
+                await submit({
+                  requestId: token,
+                  runId: `manual-${token}`,
+                  toolCallId: token,
+                  draft,
+                });
+                show(await read({ projectId: project.projectId }));
+              })}
+              <View style={row}>
+                {field("删除起点（秒）", cutStart, setCutStart)}
+                {field("删除终点（秒）", cutEnd, setCutEnd)}
+                {field("素材总长（秒）", totalSec, setTotalSec)}
+              </View>
+              {button("删除中段并拼接", async () => {
+                const draft = proposeCutOut(project, selected, cutStart, cutEnd, totalSec);
                 const token = requestId(JSON.stringify(draft));
                 await submit({
                   requestId: token,
