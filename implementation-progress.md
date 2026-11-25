@@ -51,6 +51,7 @@
 - 已实现待验收（2026-11-25，多段拼接已用本机 FFmpeg 按相同 filter_complex 实跑验证）：preview profile 放开为"同一素材同一视频流的连续多段 trim"（record 区间从 0 密铺、禁止重定时/跨素材/其他操作类型），render 改为每段一个 -i + trim/setpts + concat，checkCandidate 按各段 record 时长求和校验；本机实测 2 段 1s 拼接输出 2.000s/50 帧/音频 2.000s 全解码无错，VFR 源 likewise 连续。客户端新增「删除中段并拼接」（proposeCutOut 生成两个连续 trim op）。
 - 已实现待验收（2026-11-25，联系表管线已用固定 FFmpeg 实跑验证）：planner 白名单扩展到 7 件（新增 get_contact_sheet 有界元数据、get_qa_report 只读 QA artifact 引用，像素永不入 prompt）；新增 RPC `video.v1.contact_sheet`（operator+），media.contactSheet 按 presentation index 均匀取序号、select 精确取帧、tile 拼接写入 CAS，几何校验 width/height 必须等于网格；契约新增 ContactSheetRequest/Result、ArtifactRef kind+contact，schema bundle 重生成（47 defs）。本机实测 12 格 4x3 输出 1280x540 mjpeg。客户端素材卡片新增「生成联系表」。
 - 已实现待验收（2026-11-25，烧录链路已用固定 FFmpeg 实跑验证）：preview profile 放开 burn-in 字幕（≤64 条、mode=metadata 仍拒），render 在 concat/scale 之后用临时 SRT + subtitles 滤镜烧录（cue range 落在输出时间线）；本机实测 2 段拼接 + 烧录输出 2.000s 全解码无错。客户端 proposeCut 支持可选字幕，UI 新增字幕文本/起止字段。注意：沙箱无 fontconfig 字体时 ffmpeg 会告警，生产环境需装字体包。
+- 已实现待验收（2026-11-25，增益链路已用固定 FFmpeg 实跑验证）：preview profile 放开同素材 audioOperations（≤64，仅 gainMilli/mute），render 在每段 atrim 后按 clipId 追加 volume=<mB/1000>dB（mute 为 -inf）；本机实测 -6dB 烧录后 volumedetect 生效、全解码无错。客户端新增音量增益输入。
 
 ## 环境与错误
 

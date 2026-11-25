@@ -61,6 +61,7 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const [captionText, setCaptionText] = useState("");
   const [captionStart, setCaptionStart] = useState("0");
   const [captionEnd, setCaptionEnd] = useState("1");
+  const [gainMilli, setGainMilli] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -311,6 +312,7 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                 {field("字幕文本（烧录）", captionText, setCaptionText)}
                 {field("字幕起点（秒）", captionStart, setCaptionStart)}
                 {field("字幕终点（秒）", captionEnd, setCaptionEnd)}
+                {field("音量增益（毫分贝，可空）", gainMilli, setGainMilli)}
               </View>
               {button("提交裁剪方案", async () => {
                 const draft = proposeCut(
@@ -321,6 +323,7 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                   captionText.trim()
                     ? { text: captionText.trim(), start: captionStart, end: captionEnd }
                     : undefined,
+                  gainMilli,
                 );
                 const token = requestId(JSON.stringify(draft));
                 await submit({

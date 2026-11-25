@@ -19,6 +19,7 @@ export function proposeCut(
   start: string,
   end: string,
   caption?: CaptionCue,
+  audioGainMilli?: string,
 ): EditPlanDraftV1 {
   const asset = project.assets.find((a) => a.assetId === assetId);
   const stream = asset?.streams.find((s) => s.kind === "video");
@@ -51,7 +52,27 @@ export function proposeCut(
       },
     ],
     transformOperations: [],
-    audioOperations: [],
+    audioOperations:
+      audioGainMilli && /^\d{1,6}$/.test(audioGainMilli.trim())
+        ? [
+            {
+              opId: "audio-1",
+              order: "1",
+              trackId: "a1",
+              clipId: "clip-1",
+              source: {
+                assetId,
+                assetContentHash: asset.original.sha256,
+                streamUid: asset.streams.find((s) => s.kind === "audio")?.streamUid ?? stream.streamUid,
+                probeRevision: "1",
+              },
+              sourceRange: { start: { num: first.toString(), den: "1000" }, duration },
+              recordRange: { start: { num: "0", den: "1" }, duration },
+              gainMilli: audioGainMilli.trim(),
+              mute: false,
+            },
+          ]
+        : [],
     transitionOperations: [],
     subtitleOperations: caption
       ? [

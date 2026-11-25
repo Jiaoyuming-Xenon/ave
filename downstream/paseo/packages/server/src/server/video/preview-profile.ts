@@ -20,7 +20,6 @@ function rationalAdd(a: Rational, b: Rational): Rational {
 export function assertRenderablePreview(draft: EditPlanDraftV1): void {
   const unsupported = [
     draft.transformOperations,
-    draft.audioOperations,
     draft.transitionOperations,
     draft.generationRequests,
     draft.qaRequirements,
@@ -31,6 +30,14 @@ export function assertRenderablePreview(draft: EditPlanDraftV1): void {
     unsupported.some((ops) => ops.length > 0)
   )
     editorFailure("CAPABILITY_UNAVAILABLE", "This preview profile supports FFmpeg trims only");
+  if (draft.audioOperations.length > 64)
+    editorFailure("CAPABILITY_UNAVAILABLE", "At most 64 audio operations per plan");
+  for (const op of draft.audioOperations)
+    if (op.source.assetId !== draft.trimOperations[0]?.source.assetId)
+      editorFailure(
+        "CAPABILITY_UNAVAILABLE",
+        "Audio operations must target the same asset as the trims",
+      );
   if (draft.subtitleOperations.length > 64 || draft.subtitleOperations.some((op) => op.mode !== "burn-in"))
     editorFailure(
       "CAPABILITY_UNAVAILABLE",

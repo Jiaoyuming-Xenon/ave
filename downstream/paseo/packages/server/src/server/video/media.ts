@@ -657,12 +657,21 @@ export class MediaService {
     // per segment (vfr), so VFR sources stay VFR through the concat.
     const args = ["-v", "error", "-xerror", "-nostdin"];
     const filters: string[] = [];
+    const audioOps = new Map(plan.audioOperations.map((op) => [op.clipId, op]));
     ops.forEach((op, i) => {
       args.push("-i", this.cas.pathFor(asset.original));
       const range = `start=${rationalSeconds(op.sourceRange.start)}:duration=${rationalSeconds(op.sourceRange.duration)}`;
       filters.push(`[${i}:${video.streamIndex}]trim=${range},setpts=PTS-STARTPTS[vs${i}]`);
-      if (audio[0])
-        filters.push(`[${i}:${audio[0].streamIndex}]atrim=${range},asetpts=PTS-STARTPTS[as${i}]`);
+      if (audio[0]) {
+        let chain = `[${i}:${audio[0].streamIndex}]atrim=${range},asetpts=PTS-STARTPTS`;
+        const audioOp = audioOps.get(op.clipId);
+        if (audioOp) {
+          // gainMilli is milli-decibels; mute wins over gain.
+          const gainDb = audioOp.mute ? "-inf" : (Number(audioOp.gainMilli) / 1000).toFixed(3);
+          chain += `,volume=${gainDb}dB`;
+        }
+        filters.push(`${chain}[as${i}]`);
+      }
     });
     const vLabels = ops.map((_, i) => `[vs${i}]`).join("");
     const aLabels = audio[0] ? ops.map((_, i) => `[as${i}]`).join("") : "";
