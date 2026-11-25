@@ -18,7 +18,7 @@
 | ② Android 真机/打包 | 需真机＋electron 打包 | 本机无真机、build OOM | 环境阻塞 |
 | ② native 源素材导入 | 需 expo-crypto 二进制 digest | API 不可核实，盲写风险高，暂不做 | 暂缓 |
 
-本机真实运行汇总：**18 文件 105 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 29 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
+本机真实运行汇总：**18 文件 107 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 31 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
 
 ### 复现验收方法（OOM 受限环境，2CPU/3.9GB）
 
@@ -122,6 +122,7 @@
 - 恢复状态矩阵测试（已运行通过）：`job-recovery.test.ts` 增用例固化 `recoverJobs` 矩阵——rendering_preview/rendering_final/validating/analyzing/pausing/cancel_requested 六个在途态重启后均落 failed（NEEDS_RECONCILIATION，retryable）；awaiting_review/paused 等已结算态保持不动。夹具加 state 参数（默认 rendering_preview 不影响原用例）。本机 vitest 真实运行 job-recovery 2 项全过（累计 18 文件 101 项 TS 测试绿）。
 - 核心数据形状 fixtures（已运行通过，TS＋Python 双测）：`fixtures.json` 增 4 样例——ArtifactRef（合法 candidate 引用 vs 未知 kind 拒绝，kind 枚举 probe/proxy/mask/candidate/export/qa/manifest）、SourceAsset（合法只读源素材 vs sourceNeverWritable=false 拒绝，须 literal true）。本机真实运行 TS contracts 29 项＋Python「29 wire fixtures against 40 offline definitions」双过（累计 18 文件 105 项 TS 测试绿）。
 - 收尾完整回归（已运行通过）：18 文件 105 项 TS 测试联合运行全绿；Python 内核 20＋8＋10 检查、worker 契约 29 fixtures/40 definitions、独立媒体验收 check_media_timebase/check_sampling_map/check_protected_composite 同步复跑全 PASS。M1 可在本机运行的产品表面与核心数据形状（授权/存储/Job 故障与恢复矩阵/上传/CAS/计划校验链/grant 生命周期/候选 QA/预览能力门/二进制帧/错误 sanitization/事件与素材 wire 契约/纯逻辑裁剪）均已补可运行测试并实测。两个未勾 goal 的剩余验收（全链路 e2e AOT、生产 agent-worker 真实模型、Android 真机/打包、native 源导入 expo-crypto）确属环境/API 阻塞，非代码缺口，解锁条件见上文复现方法节。
+- worker 能力契约 fixtures（已运行通过，TS＋Python 双测）：`fixtures.json` 增 2 个 WorkerProfile 样例——声明 colorSpaces 的合法 profile vs maxWidth=0 拒绝（须正整数）。WorkerProfile 是 CapabilitySet.workerProfiles 的元素，固化 worker 能力申报形状。本机真实运行 TS contracts 31 项＋Python「31 wire fixtures against 40 offline definitions」双过（累计 18 文件 107 项 TS 测试绿）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
