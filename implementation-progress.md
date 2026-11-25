@@ -60,6 +60,7 @@
 - 阶段性验证（已运行）：`python3 -I scripts/check_project.py` 通过（18 份 Markdown、2 份 SVG、团队数据与链接一致）；`v1.schema.json` 与 main 字节一致（`listProjectsRpc` 用内联 output，未新增导出 `*Schema`，无需重生成、契约一致性保持）；工作树干净。PR 累计 16 个 downstream 文件、约 711 行新增。功能/测试代码仍未在本机运行（npm ci OOM，按指示跳过 CI），上述为静态/项目级校验。
 - native 源素材平台说明（代码已写，未运行）：`edit-desk.tsx` 源素材区原先仅 web 渲染导入控件，native 无任何导入入口或说明。现 native 增诚实提示：导入在桌面网页端（浏览器文件选择），手机端可浏览素材、设置入出点、提交裁剪方案与审批交付（核实：入出点/提交方案块非平台门控，交付审批已于块3解耦）。属 goal② 共享 Android UI 的可用性补全。未运行真机。
 - proposeCut 纯逻辑测试（代码已写，未运行）：新增 `plugins/video-editor/test/cut.test.ts`，覆盖毫秒精度 trim draft（1.5–4.05→start 1500/1000、duration 2550/1000、recordRange 0 起）、绑定项目 revision/manifestHash、intent 含素材名；出点≤入点拒绝；非法/负/超三位小数/空秒数拒绝；无视频流素材拒绝。与 review-bytes 同置 test/ 目录，根 vitest 默认 include 采集。验收剪辑方案生成正确性。未运行 Vitest。
+- worker 契约离线校验（已运行）：本机 `python3 plugins/video-editor/test/check_worker_contract.py` 通过——「PASS: 14 wire fixtures against 40 offline definitions」（jsonschema 4.26.0）。证实 generated bundle 仍为 40 定义、14 条 Python fixtures 全部一致，`listProjectsRpc` 内联 output 未破坏离线 worker 契约。这是 goal② worker 侧可在本机真实执行的验收（不依赖 node/npm）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
