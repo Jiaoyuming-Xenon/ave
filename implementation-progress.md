@@ -18,7 +18,7 @@
 | ② Android 真机/打包 | 需真机＋electron 打包 | 本机无真机、build OOM | 环境阻塞 |
 | ② native 源素材导入 | 需 expo-crypto 二进制 digest | API 不可核实，盲写风险高，暂不做 | 暂缓 |
 
-本机真实运行汇总：**30 文件 189 项 TS 测试全绿**（18 个 video-editor 文件 111 项＋import-source 9＋web 3＋web-mount 7＋review-bytes-extra 3＋tool-broker-extra 1＋tool-broker-snapshot 1＋job-supervisor-extra 7＋access-extra 1＋authorization-extra 3＋protocol daemon-endpoints-extra 11／connection-offer-extra 7／messages.wire-compat 25；独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3＋react-native stub，绕开 OOM 的 npm ci）；另上游 protocol daemon-endpoints 26／connection-offer 5／chunked-transport 34 项亦本机跑通（goal① 设备连接/配对/分帧佐证，chunked 1 项需 dist 构建属环境阻塞）；**3 个 Python 内核 38 检查**＋**worker 契约 35 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。glob 全量回归仅 editor.e2e（缺生成 AOT）与 edit-desk.browser.e2e（缺 esbuild/浏览器构建）2 文件收集失败，属已知环境阻塞。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
+本机真实运行汇总：**31 文件 191 项 TS 测试全绿**（18 个 video-editor 文件 111 项＋import-source 9＋web 3＋web-mount 7＋review-bytes-extra 3＋tool-broker-extra 1＋tool-broker-snapshot 1＋job-supervisor-extra 7＋access-extra 1＋authorization-extra 3＋cas-extra 2＋protocol daemon-endpoints-extra 11／connection-offer-extra 7／messages.wire-compat 25；独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3＋react-native stub，绕开 OOM 的 npm ci）；另上游 protocol daemon-endpoints 26／connection-offer 5／chunked-transport 34 项亦本机跑通（goal① 设备连接/配对/分帧佐证，chunked 1 项需 dist 构建属环境阻塞）；**3 个 Python 内核 38 检查**＋**worker 契约 35 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。glob 全量回归仅 editor.e2e（缺生成 AOT）与 edit-desk.browser.e2e（缺 esbuild/浏览器构建）2 文件收集失败，属已知环境阻塞。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
 
 ### 复现验收方法（OOM 受限环境，2CPU/3.9GB）
 
@@ -138,6 +138,7 @@
 - 监督器入队去重与终态重入测试（已运行通过，goal② agent-worker 监督）：`job-supervisor.test.ts` 已覆盖取消/暂停/恢复/重试故障矩阵；新增 `job-supervisor-extra.test.ts`（7 项）补未测分支——enqueue 去重守卫（同一 job 运行中重复 enqueue 仅启动 1 个 worker，running.has 门）、execute 对终态/awaiting/paused 的重入 no-op（completed/failed/cancelled/awaiting_review/awaiting_delivery_approval/paused 直接 enqueue 不经控制转换不启动 media，executions=0 且状态不变）。本机真实运行 7 项全绿（累计 28 文件 185 项 TS 测试绿）。
 - 设备访问失败闭合补口测试（已运行通过，goal① 设备配对安全）：`access.test.ts` 已覆盖配对/邀请重放/过期/持久化/撤销监听/边界；新增 `access-extra.test.ts`（1 项 2 断言）补剩余失败闭合分支——未知 invitationId 兑换抛 UNAUTHENTICATED、activePrincipal 对未知设备抛「not active」。本机真实运行通过（累计 29 文件 186 项 TS 测试绿）。
 - 授权提权守卫测试（已运行通过，goal① 角色矩阵安全）：`authorization.test.ts` 已覆盖角色矩阵与 daemon.manage owner 映射；新增 `authorization-extra.test.ts`（3 项）固化 editorPrincipalForCaller 的提权防护——仅 principalId="owner" 而无 daemon.manage 权限不授予 owner（抛「no video editor credential」）、须 daemon.manage 而非无关权限（daemon.read 拒）、显式设备凭据优先于 owner 会话（editorPrincipal=viewer＋owner/daemon.manage 会话返回 viewer 而非 owner，防提权）。本机真实运行 3 项全绿（累计 30 文件 189 项 TS 测试绿）。
+- CAS 哈希与范围守卫补口测试（已运行通过，goal① 素材完整性）：`cas.test.ts` 已覆盖 readRange  partial/截断、writeBytes 去重/篡改、writeJson 往返；新增 `cas-extra.test.ts`（2 项）补 sha256Json 纯函数（＝JSON.stringify 字节的 SHA-256、确定性、键序敏感——固化 planner requestId/资产 manifest 摘要口径）与 readRange 参数守卫（负 offset/非正 length/offset≥size 均抛 RANGE_NOT_SATISFIABLE）。本机真实运行 2 项全绿（累计 31 文件 191 项 TS 测试绿）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
