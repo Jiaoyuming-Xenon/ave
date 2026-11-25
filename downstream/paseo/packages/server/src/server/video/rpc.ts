@@ -14,6 +14,7 @@ import {
   AnalyzeAssetInputSchema,
   ContactSheetRequestSchema,
   InspectFrameRequestSchema,
+  PreviewFramesRequestSchema,
   type EditorPrincipal,
 } from "#video-editor/contracts/v1";
 import { decodeFramedChunk } from "#video-editor/bytes";
@@ -143,6 +144,16 @@ export class EditorRpcService {
           new AbortController().signal,
         );
       }
+      case "video.v1.preview_frames": {
+        const request = PreviewFramesRequestSchema.parse(input);
+        return this.editor.media.previewFrames(
+          request.projectId,
+          request.jobId,
+          request.maxTiles ? Number(request.maxTiles) : 12,
+          principal,
+          new AbortController().signal,
+        );
+      }
       case "video.v1.create_invitation":
       case "video.v1.redeem_invitation":
       case "video.v1.revoke_device":
@@ -241,7 +252,7 @@ export class EditorRpcService {
     const { projectId, assetId, revision } = input;
     const ref = (() => {
       if (assetId.endsWith(":review-proxy")) return this.editor.store.finalReviewProxy(projectId, assetId, revision, principal).blob;
-      if (assetId.endsWith(":candidate")) return this.previewForReview(input, principal);
+      if (assetId.endsWith(":candidate")) return this.editor.store.reviewablePreview(projectId, assetId.slice(0, -":candidate".length), principal, revision).blob;
       if (assetId.startsWith("contact:")) return this.editor.store.contactSheetBlob(projectId, revision, assetId, principal);
       if (assetId.endsWith(":export") || assetId.endsWith(":manifest") || assetId.endsWith(":qa") || assetId.endsWith(":scenecuts") || assetId.endsWith(":waveform")) return this.editor.store.artifact(projectId, assetId, revision, principal).blob;
       return this.editor.store.asset(projectId, assetId, revision, principal).proxy;
@@ -264,18 +275,6 @@ export class EditorRpcService {
     frame.set(header, 2);
     frame.set(bytes, 2 + header.byteLength);
     return frame;
-  }
-
-  private previewForReview(input: z.infer<typeof ReadAssetChunkRequestSchema>, principal: EditorPrincipal) {
-    const jobId = input.assetId.slice(0, -":candidate".length);
-    const job = this.editor.store.job(input.projectId, jobId, principal);
-    if (job.kind !== "preview" || job.state !== "awaiting_review")
-      editorFailure("PERMISSION_DENIED", "Only a reviewable preview may be read on this route");
-    if (job.candidateRevision !== input.revision)
-      editorFailure("REVISION_CONFLICT", "The preview belongs to another candidate revision");
-    const artifact = job.artifacts.find(a => a.artifactId === input.assetId && a.kind === "candidate" && a.jobId === job.jobId && a.projectId === input.projectId && a.revision === input.revision);
-    if (!artifact) editorFailure("ASSET_NOT_FOUND", "No reviewed preview bytes for this revision");
-    return artifact.blob;
   }
 
   private async writeUploadChunk(

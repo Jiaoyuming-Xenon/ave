@@ -10,7 +10,7 @@ import {
   createJobRpc,
   createUploadRpc, getUploadStatusRpc, writeUploadChunkRpc, commitUploadRpc,
   startPlanningRunRpc, steerPlanningRunRpc, followUpPlanningRunRpc, stopPlanningRunRpc, getEventsRpc,
-  analyzeAssetRpc, contactSheetRpc, readAssetChunkRpc,
+  analyzeAssetRpc, contactSheetRpc, previewFramesRpc, readAssetChunkRpc,
   type ApprovalRequest, type BlobRef, type EditorEvent, type PlanningRunStatus, type ProjectSnapshot,
 } from "../shared/contracts/v1.js";
 import { FrameInspector } from "./frame-inspector.js";
@@ -62,6 +62,7 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const readEvents = useRpc(getEventsRpc);
   const analyze = useRpc(analyzeAssetRpc);
   const sheet = useRpc(contactSheetRpc);
+  const frames = useRpc(previewFramesRpc);
   const readChunk = useRpc(readAssetChunkRpc);
   const [sourceImport, setSourceImport] = useState<SourceImport | null>(null);
   const [confirmed, setConfirmed] = useState(0);
@@ -737,6 +738,17 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                   : null,
               )}
               {preview && mediaControl("观看预览候选", preview.artifactId, preview.revision, preview.blob)}
+              {preview && button("预览帧", async () => {
+                const result = await frames({
+                  requestId: requestId(`frames:${job.jobId}`),
+                  projectId: project.projectId,
+                  jobId: job.jobId,
+                  maxTiles: "12",
+                });
+                setNotice(`预览帧 ${result.columns}x${result.rows}（${result.tiles} 格）已生成 · SHA-256 ${result.blob.sha256.slice(0, 12)}`);
+                setSheetRef({ ...result, revision: preview.revision });
+              })}
+              {preview && sheetRef?.projectId === project.projectId && sheetRef.assetId === preview.artifactId && sheetRef.revision === preview.revision && mediaControl("查看预览帧", sheetRef.artifactId, sheetRef.revision, sheetRef.blob, "contact")}
               {job.artifacts
                 .filter((a) => a.kind === "qa")
                 .map((a) => mediaControl("查看 QA 报告", a.artifactId, a.revision, a.blob, "qa"))}

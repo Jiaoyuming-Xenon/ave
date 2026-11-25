@@ -193,6 +193,8 @@
 - 已实现确定性音频波形（2026-11-25）：analysis job 新增 waveform artifact（首条音频流解码为 8kHz mono PCM，上限 120s，每 100ms 一个 RMS 桶，≤1200 桶，video.waveform/v1），rpc 支持 :waveform、get_analysis 返回摘要，客户端“分析切点/波形”按钮同时拉取并以块字符渲染波形、切点点击写入入点。本地 3s 正弦音实测 30 桶 RMS≈0.088 稳定，wire 14/14、profile 20/20、esbuild 全绿。未跑真模型/e2e。
 - 已实现方案卡时间线可视化（2026-11-25）：客户端已提议方案卡按 v1/v2 分轨渲染等宽比例片段条（flexGrow=片段时长，标注 clipId 与源入点），esbuild 全绿。未跑真模型/e2e。
 - 已实现 diff_plans planner 工具（2026-11-25，第 12 个）：按 opId 对已采纳 plan 与候选草稿做新增/删除/字段级变更对比（每类上限 64 条、字段上限 12 个），提交前可迭代修改；本地算法单测（t1 变更 sourceRange、t2 新增、x1 删除）符合预期，wire 14/14、esbuild 全绿。未跑真模型/e2e。
+- 已实现预览候选帧故事板（2026-11-25）：新增 video.v1.preview_frames（PreviewFramesRequest，≤36 格），media.previewFrames 对 candidate 定时采样（fps=tiles/duration）经 scale/pad/tile 生成 JPEG 入 CAS 并做几何校验，哈希引用；客户端预览审批卡新增“预览帧”按钮复用联系表查看器。本地 3s 视频 fps=4→4x3=1280x540 几何校验通过，wire 14/14（48 defs）、esbuild 全绿。未跑真模型/e2e。
+- 已跑通真实服务冒烟（2026-11-25，本地 FFmpeg 8.0.1，真实 EditorService+SQLite+CAS）：上传 3s 三色+正弦音源→asset(h264+aac)；analysis job 产出 qa+scenecuts+waveform，切点恰为 1.000s/2.000s（整帧对齐）、波形 30 桶与独立计算一致；broker get_scene_cuts 返回 2 条；submit_edit_plan→proposed→approve→preview job 至 awaiting_review（candidate+qa），QA 含 renderRecipeHash(64hex) 且 planHash 匹配、输出时长精确 2.000000s；preview_frames 2x1 JPEG 且重复生成 SHA-256 一致（确定性）。顺手修复 rpc.ts 中 contact: 分支在非 async IIFE 里 await 的语法错误。wire 14/14（48 defs）、profile 20/20、esbuild 全绿。仍未跑真模型/e2e。
 ## 环境与错误
 
 | 问题 | 处理 |

@@ -109,6 +109,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS active_job_semantics ON jobs(project_id, plan_
 CREATE TABLE IF NOT EXISTS constant_rate_streams (
   index_sha TEXT NOT NULL, stream_uid TEXT NOT NULL, PRIMARY KEY(index_sha, stream_uid)
 );
+CREATE TABLE IF NOT EXISTS preview_sheets (
+  artifact_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, job_id TEXT NOT NULL REFERENCES jobs(job_id),
+  revision TEXT NOT NULL, blob TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS contact_sheets (
   project_id TEXT NOT NULL REFERENCES projects(project_id), revision TEXT NOT NULL,
   artifact_id TEXT NOT NULL, blob TEXT NOT NULL, PRIMARY KEY(project_id, revision, artifact_id)
@@ -349,6 +353,24 @@ export class EditorStore {
     return Boolean(this.database.prepare("SELECT 1 FROM constant_rate_streams WHERE index_sha = ? AND stream_uid = ?").get(indexSha, streamUid));
   }
 
+  reviewablePreview(projectId: string, jobId: string, principal: EditorPrincipal, revision?: string): ArtifactRef {
+    const job = this.job(projectId, jobId, principal);
+    if (job.kind !== "preview" || job.state !== "awaiting_review")
+      editorFailure("PERMISSION_DENIED", "Only a reviewable preview may be read on this route");
+    if (revision !== undefined && job.candidateRevision !== revision)
+      editorFailure("REVISION_CONFLICT", "The preview belongs to another candidate revision");
+    const artifact = job.artifacts.find(a => a.artifactId === `${jobId}:candidate` && a.kind === "candidate" && a.jobId === jobId && a.projectId === projectId && a.revision === job.candidateRevision);
+    if (!artifact) editorFailure("ASSET_NOT_FOUND", "No reviewed preview bytes for this revision");
+    return artifact;
+  }
+
+  registerPreviewSheet(projectId: string, jobId: string, revision: string, blob: BlobRef, principal: EditorPrincipal): string {
+    this.reviewablePreview(projectId, jobId, principal, revision);
+    const id = `contact:preview:${sha256Json([jobId, revision, blob.sha256])}`;
+    this.database.prepare("INSERT OR IGNORE INTO preview_sheets VALUES (?, ?, ?, ?, ?)").run(id, projectId, jobId, revision, JSON.stringify(blob));
+    return id;
+  }
+
   registerContactSheet(projectId: string, revision: string, assetId: string, blob: BlobRef, principal: EditorPrincipal): string {
     this.authorize(projectId, principal, "operator");
     this.asset(projectId, assetId, revision, principal);
@@ -360,6 +382,12 @@ export class EditorStore {
 
   contactSheetBlob(projectId: string, revision: string, id: string, principal: EditorPrincipal): BlobRef {
     this.authorize(projectId, principal, "viewer");
+    if (id.startsWith("contact:preview:")) {
+      const row = this.database.prepare("SELECT job_id, blob FROM preview_sheets WHERE project_id = ? AND revision = ? AND artifact_id = ?").get(projectId, revision, id) as { job_id: string; blob: string } | undefined;
+      if (!row) editorFailure("ASSET_NOT_FOUND", "No preview sheet for this project and revision");
+      this.reviewablePreview(projectId, row.job_id, principal, revision);
+      return BlobRefSchema.parse(JSON.parse(row.blob));
+    }
     if (this.projectRow(projectId).revision !== revision)
       editorFailure("REVISION_CONFLICT", "Download a fresh project snapshot");
     const [document] = this.rows("SELECT blob FROM contact_sheets WHERE project_id = ? AND revision = ? AND artifact_id = ?", projectId, revision, id);
