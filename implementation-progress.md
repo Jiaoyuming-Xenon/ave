@@ -57,6 +57,7 @@
 - 项目条目打开健壮性（代码已写，未运行）：`edit-desk.tsx`「我的项目」条目原先直接 `async show(await read(...))`，read 失败会产生未处理 rejection 且无 busy 锁。现包裹 `perform`（统一 busy 锁与错误捕获）并 `disabled={busy}`，与其余按钮一致。未运行 typecheck/真机。
 - 预 abort 取消故障测试（代码已写，未运行）：`media-failure.test.ts` 增「render job 信号已 abort 时在 spawn ffmpeg 前抛 CANCELLED」。路径核实：executeJob→render（无前置探测）→spawnChecked→throwIfCancelled(aborted)→CANCELLED，不依赖真实媒体或新版 ffmpeg。补齐 goal① 故障矩阵的取消分支。未运行 Vitest。
 - access 边界测试（代码已写，未运行）：`access.test.ts` 增边界用例——空 projectIds 邀请 INVALID_ARGUMENT；错误 token 与过期邀请（ttlSeconds:-1）redeem 均 UNAUTHENTICATED；错误凭据/未知 deviceId authenticate 抛 “invalid or revoked”；撤销不存在设备 PROJECT_NOT_FOUND。补齐 goal① 设备凭据生命周期的负路径。未运行 Vitest。
+- 阶段性验证（已运行）：`python3 -I scripts/check_project.py` 通过（18 份 Markdown、2 份 SVG、团队数据与链接一致）；`v1.schema.json` 与 main 字节一致（`listProjectsRpc` 用内联 output，未新增导出 `*Schema`，无需重生成、契约一致性保持）；工作树干净。PR 累计 16 个 downstream 文件、约 711 行新增。功能/测试代码仍未在本机运行（npm ci OOM，按指示跳过 CI），上述为静态/项目级校验。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
