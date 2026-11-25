@@ -12,7 +12,7 @@ import { EditorError, editorFailure } from "./errors.js";
  * silent skip.
  */
 
-function resolveWorkerDir(here: string): string {
+export function resolveWorkerDir(here: string): string {
   const fromEnv = process.env.VIDEO_EDITOR_WORKER_DIR;
   if (fromEnv) return fromEnv;
   const candidates = [

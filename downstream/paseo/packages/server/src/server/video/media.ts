@@ -8,6 +8,7 @@ import { execFile } from "node:child_process";
 import { ContentAddressedStore, sha256File } from "./cas.js";
 import { EditorError, editorFailure } from "./errors.js";
 import { assertRenderablePreview } from "./preview-profile.js";
+import { FrameInspector } from "./frame-inspector.js";
 import { PyWorker } from "./py-worker.js";
 import { EditorStore } from "./store.js";
 import {
@@ -21,6 +22,7 @@ import {
   type SourceAsset,
   type StreamDescriptor,
   type ContactSheetResult,
+  type InspectFrameRequest,
 } from "#video-editor/contracts/v1";
 
 const execFileAsync = promisify(execFile);
@@ -106,6 +108,14 @@ export interface MediaTools {
 export class MediaService {
   private readonly uploadsInFlight = new Map<string, Promise<void>>();
   private readonly py = new PyWorker();
+  private readonly frameInspector = new FrameInspector();
+
+  async inspectFrame(input: InspectFrameRequest, principal: EditorPrincipal) {
+    const project = this.store.project(input.projectId, principal);
+    const asset = project.assets.find(a => a.assetId === input.assetId);
+    if (!asset) editorFailure("ASSET_NOT_FOUND", "The asset is not in this project");
+    return this.frameInspector.inspect(input, asset, this.cas, this.tools.ffmpeg);
+  }
 
   /** Working sample rate for analysis jobs (CFR grid); VFR sources keep their index ticks. */
   private static readonly ANALYSIS_RATE = "25/1";

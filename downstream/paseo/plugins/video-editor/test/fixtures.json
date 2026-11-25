@@ -103,6 +103,8 @@
       "mediaType": "video/mp4"
     }
   },
+  {"name": "inspect an exact source frame", "schema": "InspectFrameRequest", "valid": true, "value": {"projectId": "p", "assetId": "a", "streamUid": "v", "sourcePresentationIndexHash": "1111111111111111111111111111111111111111111111111111111111111111", "frame": 2, "points": []}},
+  {"name": "negative frame pixel is invalid", "schema": "InspectFrameRequest", "valid": false, "value": {"projectId": "p", "assetId": "a", "streamUid": "v", "sourcePresentationIndexHash": "1111111111111111111111111111111111111111111111111111111111111111", "frame": 2, "points": [{"x": -1, "y": 0, "foreground": true}]}},
   {
     "name": "sha256 must be complete",
     "schema": "BlobRef",

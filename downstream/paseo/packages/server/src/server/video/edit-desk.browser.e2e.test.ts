@@ -20,7 +20,8 @@ const repo = fileURLToPath(new URL("../../../../../", import.meta.url));
 // Opt-in: requires agent-browser and a local Chrome binary. Never attaches to a user's browser.
 test
   .skipIf(process.env.VIDEO_EDITOR_BROWSER_TEST !== "1")
-  .each(["source import", "preview approval and reviewed delivery", "reject preview"] as const)(
+  .each(["source import", "preview approval and reviewed delivery", "reject preview",
+    ...(process.env.VIDEO_EDITOR_SAM2_TEST === "1" ? ["object mask"] : [])])(
   "edit desk: %s",
   async (scenario) => {
     const session = `edit-desk-${randomUUID()}`;
@@ -67,7 +68,8 @@ test
           "-f",
           "lavfi",
           "-i",
-          "testsrc2=size=160x90:rate=25:duration=2",
+          scenario === "object mask" ? "color=c=navy:size=320x192:rate=25:duration=2,drawbox=x=118:y=60:w=85:h=72:color=orange:t=fill"
+            : "testsrc2=size=160x90:rate=25:duration=2",
           "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=2",
           "-c:a", "aac",
           "-c:v",
@@ -146,6 +148,10 @@ test
         "open",
         origin,
       );
+      const clickDesk = async (label: string) => {
+        await web("eval", `[...document.querySelectorAll('[role="button"],button')].find(n=>(n.getAttribute("aria-label") || n.textContent)===${JSON.stringify(label)})?.scrollIntoView({block:'center'}); true`);
+        await web("find", "role", "button", "click", "--name", label);
+      };
       await web("wait", '[aria-label="项目 ID"]');
       await web("fill", '[aria-label="项目 ID"]', project.projectId);
       await web("find", "role", "button", "click", "--name", "打开项目");
@@ -175,9 +181,46 @@ test
         await web("wait", "--fn", `document.querySelector('img[alt^="contact sheet"]')?.naturalWidth > 0`);
         expect(imported.jobs).toHaveLength(0);
         expect(imported.approvals).toHaveLength(0);
+        await web("fill", '[aria-label="源帧序号（从零开始）"]', "4");
+        await clickDesk("查看源帧");
+        await web("wait", "--text", "源帧 4 / 49 · PTS 2048 × 1/12800 · 160×90");
+        await web("wait", '[aria-label="点选源帧"]');
+        const asset = imported.assets[0]!;
+        const request = { projectId: imported.projectId, assetId: asset.assetId, streamUid: asset.streams[0]!.streamUid,
+          sourcePresentationIndexHash: asset.presentationIndex.sha256, frame: 4, points: [] };
+        await expect(invoke("inspect_frame", { ...request, frame: 50 })).rejects.toThrow();
+        await expect(invoke("inspect_frame", { ...request, sourcePresentationIndexHash: "0".repeat(64) })).rejects.toThrow();
         return;
       }
       await web("wait", '[aria-label="入点（秒，含）"]');
+      if (scenario === "object mask") {
+        await clickDesk("查看源帧");
+        await web("wait", "--text", "320×192");
+        const img = "document.querySelector('[aria-label=\"点选源帧\"] img')";
+        await web("wait", "--fn", `${img}?.naturalWidth === 320`);
+        const sourceImage = await web("eval", `${img}.src`);
+        await clickDesk("点选源帧");
+        await web("wait", "--text", "SAM2 掩码 · 1 个点");
+        const summary = await web("snapshot");
+        const area = Number(/SAM2 掩码 · 1 个点 · (\d+) 个前景像素/.exec(summary)?.[1]);
+        // The known rectangle covers 6,120 pixels; excessive background also fails.
+        expect(area).toBeGreaterThan(5500);
+        expect(area).toBeLessThan(6700);
+        expect(await web("eval", `${img}.src`)).not.toBe(sourceImage);
+        await clickDesk("添加背景点");
+        const [x,y] = JSON.parse(await web("eval", `(() => {
+          const b = ${img}.getBoundingClientRect(); return [Math.round(b.left + b.width / 8), Math.round(b.top + b.height / 8)];
+        })()`)) as [number, number];
+        await web("mouse", "move", String(x), String(y));
+        await web("mouse", "down");
+        await web("mouse", "up");
+        await web("wait", "--text", "SAM2 掩码 · 2 个点");
+        await clickDesk("清除点选");
+        await web("wait", "--fn", "!document.body.textContent.includes('SAM2 掩码')");
+        expect(await web("eval", `${img}.src`)).toBe(sourceImage);
+        expect(createHash("sha256").update(await readFile(source)).digest("hex")).toBe(digest);
+        return;
+      }
       // This range is exact on the 25 fps source, but not representable on a 30 fps grid.
       await web("fill", '[aria-label="入点（秒，含）"]', "0.120");
       await web("fill", '[aria-label="出点（秒，不含）"]', "1.400");
@@ -275,10 +318,6 @@ test
       expect(finalReady.jobs.find(j => j.kind === "final")?.approvalId).toBe(finalApproval?.approvalId);
       const exportApproval = finalReady.approvals.find(a => a.purpose === "export");
       expect(exportApproval?.status).toBe("pending");
-      const clickDesk = async (label: string) => {
-        await web("eval", `[...document.querySelectorAll('[role="button"],button')].find(n=>n.textContent===${JSON.stringify(label)})?.scrollIntoView({block:'center'}); true`);
-        await web("find", "role", "button", "click", "--name", label);
-      };
       await clickDesk("刷新项目");
       await clickDesk("观看成品审片代理");
       const finalVideo = 'video[aria-label="观看成品审片代理"]';

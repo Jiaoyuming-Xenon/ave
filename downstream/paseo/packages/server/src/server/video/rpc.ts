@@ -13,6 +13,7 @@ import {
   SteerPlanningRunInputSchema,
   AnalyzeAssetInputSchema,
   ContactSheetRequestSchema,
+  InspectFrameRequestSchema,
   type EditorPrincipal,
 } from "#video-editor/contracts/v1";
 import { decodeFramedChunk } from "#video-editor/bytes";
@@ -125,6 +126,11 @@ export class EditorRpcService {
         const result = this.editor.store.createAnalysisJob({ ...request, principal });
         this.editor.jobs.enqueue(request.projectId, result.job.jobId);
         return result;
+      }
+      case "video.v1.inspect_frame": {
+        const request = InspectFrameRequestSchema.parse(input);
+        this.editor.store.authorizeProject(request.projectId, principal, "operator");
+        return this.editor.media.inspectFrame(request, principal);
       }
       case "video.v1.contact_sheet": {
         const request = ContactSheetRequestSchema.parse(input);
