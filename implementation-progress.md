@@ -95,6 +95,7 @@
 - proposeCut 精度边界测试（已运行通过）：`cut.test.ts` 增「毫秒精度边界与整数位数上限」用例——最小合法裁剪 1ms（0→0.001，duration num=1）、9 位整数秒接受/10 位拒绝、裸小数「.5」与悬空小数点「1.」及「1.2.3」拒绝、首尾空白裁剪后解析。固化 milliseconds() 的 ^(\d{1,9})(?:\.(\d{1,3}))?$ 契约。本机 vitest 真实运行 cut 5 项全过（累计 68 项 TS 测试绿）。
 - 上传单块尺寸上限测试（已运行通过）：核实 `media.writeUploadChunk` 守卫——空块/单块>262144/end>expectedSize/end>MAX_SAFE_INTEGER 均 INVALID_ARGUMENT，偏移或内容冲突 IDEMPOTENCY_CONFLICT，相同 digest 幂等返回。`upload.test.ts` 增「单块尺寸上限」用例：262145 字节拒绝、恰好 262144 接受并推进 offset（空块与越界此前已覆盖）。本机 vitest（带新 ffprobe PATH）真实运行 upload 4 项全过（累计 69 项 TS 测试绿）。
 - 契约 schema 漂移检查（已运行通过）：`node --experimental-strip-types scripts/generate-video-schema.mjs`（v1.ts 仅依赖 zod、自包含，zod 4.4.3 原生 z.toJSONSchema）真实运行输出「40 video contract definitions · in sync」——提交的 `v1.schema.json` 与 zod 源 `v1.ts` 完全一致，无漂移；worker 契约离线校验所依赖的 wire schema 可信。此命令可独立复跑（无需 OOM 的完整 build）。
+- 独立媒体基线验收（已运行通过，含一处脚本修复）：带新 ffmpeg 运行根 `scripts/` 三个独立验收——`check_sampling_map.py` PASS（8 VFR 帧→9 个 25Hz 样本、精确像素/时间戳、非法 rebind/count/clock/duration/gap 拒绝、大 tick 保留）；`check_protected_composite.py` PASS（4 帧 2592 保护像素逐字节一致、opaque/feather、无损 RGB 往返、源未变）；`check_media_timebase.py` 初跑失败——诊断为新 ffmpeg（Lavf63 master）streamhash v2 在每流 checksum 行前输出 `#` 头部行，旧脚本「恰 3 行」假设被破坏（非产品回归）。修复 `measure()` 过滤 `#` 头部行（bytes 口径，保持 source/copy/shift 比较一致），复跑 PASS：19 VFR 帧、首 PTS 2s、40/80ms 步长、双 PCM＋定时字幕、流拷贝保留 packet 时间/载荷/解码 A/V、两个负对照可区分、预览时钟 [0.120,1.400) 32 帧 1.280s。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
