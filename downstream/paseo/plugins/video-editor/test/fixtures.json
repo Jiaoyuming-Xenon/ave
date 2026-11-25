@@ -246,5 +246,71 @@
     "schema": "ApprovalRequest",
     "valid": false,
     "value": { "approvalId": "approval", "projectId": "proj", "subjectType": "bogus", "subjectId": "plan", "subjectRevision": "1", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "requiredInputs": [], "diffSummary": { "intent": "trim", "operationCount": 1, "summary": "single trim" }, "generationCostCapMicros": "100", "externalDestinations": [], "status": "pending", "expiresAt": "2026-11-25T00:00:00Z" }
+  },
+  {
+    "name": "editor principal scoped viewer",
+    "schema": "EditorPrincipal",
+    "valid": true,
+    "value": { "principalId": "device-1", "role": "viewer", "projectIds": ["p1"] }
+  },
+  {
+    "name": "editor principal owner has null project scope",
+    "schema": "EditorPrincipal",
+    "valid": true,
+    "value": { "principalId": "owner", "role": "owner", "projectIds": null }
+  },
+  {
+    "name": "editor principal role must be known",
+    "schema": "EditorPrincipal",
+    "valid": false,
+    "value": { "principalId": "device-1", "role": "admin", "projectIds": ["p1"] }
+  },
+  {
+    "name": "editor error carries code and retryable flag",
+    "schema": "EditorError",
+    "valid": true,
+    "value": { "code": "QA_FAILED", "retryable": true, "sanitizedDetail": "Candidate audio tracks differ" }
+  },
+  {
+    "name": "editor error retryable must be boolean",
+    "schema": "EditorError",
+    "valid": false,
+    "value": { "code": "QA_FAILED", "retryable": "yes", "sanitizedDetail": "x" }
+  },
+  {
+    "name": "asset stream ref binds content hash and probe revision",
+    "schema": "AssetStreamRef",
+    "valid": true,
+    "value": { "assetId": "asset", "assetContentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "streamUid": "stream:0", "probeRevision": "1" }
+  },
+  {
+    "name": "asset stream ref content hash must be sha256",
+    "schema": "AssetStreamRef",
+    "valid": false,
+    "value": { "assetId": "asset", "assetContentHash": "short", "streamUid": "stream:0", "probeRevision": "1" }
+  },
+  {
+    "name": "job state rendering preview is known",
+    "schema": "JobState",
+    "valid": true,
+    "value": "rendering_preview"
+  },
+  {
+    "name": "job state must be a known lifecycle state",
+    "schema": "JobState",
+    "valid": false,
+    "value": "bogus"
+  },
+  {
+    "name": "editor role operator is known",
+    "schema": "EditorRole",
+    "valid": true,
+    "value": "operator"
+  },
+  {
+    "name": "editor role must be viewer operator or owner",
+    "schema": "EditorRole",
+    "valid": false,
+    "value": "admin"
   }
 ]
