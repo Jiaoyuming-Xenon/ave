@@ -9,7 +9,7 @@ import {
   createJobRpc,
   createUploadRpc, getUploadStatusRpc, writeUploadChunkRpc, commitUploadRpc,
   startPlanningRunRpc, steerPlanningRunRpc, followUpPlanningRunRpc, stopPlanningRunRpc, getEventsRpc,
-  analyzeAssetRpc,
+  analyzeAssetRpc, contactSheetRpc,
   type ApprovalRequest, type BlobRef, type EditorEvent, type PlanningRunStatus, type ProjectSnapshot,
 } from "../shared/contracts/v1.js";
 import { ReviewPlayer } from "./review-player.js";
@@ -45,6 +45,7 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const stopRun = useRpc(stopPlanningRunRpc);
   const readEvents = useRpc(getEventsRpc);
   const analyze = useRpc(analyzeAssetRpc);
+  const sheet = useRpc(contactSheetRpc);
   const [sourceImport, setSourceImport] = useState<SourceImport | null>(null);
   const [confirmed, setConfirmed] = useState(0);
   const [project, setProject] = useState<ProjectSnapshot | null>(null);
@@ -59,6 +60,7 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const [totalSec, setTotalSec] = useState("3");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
   const [planPrompt, setPlanPrompt] = useState("");
   const [run, setRun] = useState<PlanningRunStatus | null>(null);
   const [runEvents, setRunEvents] = useState<EditorEvent[]>([]);
@@ -282,6 +284,16 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                   });
                   show(await read({ projectId: project.projectId }));
                 })}
+              {asset.streams.some((s) => s.kind === "video") &&
+                button("生成联系表", async () => {
+                  const result = await sheet({
+                    requestId: requestId(`sheet:${asset.assetId}`),
+                    projectId: project.projectId,
+                    assetId: asset.assetId,
+                    maxTiles: "12",
+                  });
+                  setNotice(`联系表 ${result.columns}x${result.rows}（${result.tiles} 格）已生成 · SHA-256 ${result.blob.sha256.slice(0, 12)}`);
+                })}
             </DeskControl>
           ))}
           {selected !== "" && (
@@ -451,6 +463,11 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
       {busy && (
         <Text accessibilityLiveRegion="polite" style={muted}>
           正在与项目同步…
+        </Text>
+      )}
+      {!!notice && (
+        <Text accessibilityLiveRegion="polite" style={muted}>
+          {notice}
         </Text>
       )}
       {!!error && (

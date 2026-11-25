@@ -12,6 +12,7 @@ import {
   StartPlanningRunInputSchema,
   SteerPlanningRunInputSchema,
   AnalyzeAssetInputSchema,
+  ContactSheetRequestSchema,
   type EditorPrincipal,
 } from "#video-editor/contracts/v1";
 import { decodeFramedChunk } from "#video-editor/bytes";
@@ -122,6 +123,17 @@ export class EditorRpcService {
         const result = this.editor.store.createAnalysisJob({ ...request, principal });
         this.editor.jobs.enqueue(request.projectId, result.job.jobId);
         return result;
+      }
+      case "video.v1.contact_sheet": {
+        const request = ContactSheetRequestSchema.parse(input);
+        this.editor.store.authorizeProject(request.projectId, principal, "operator");
+        return this.editor.media.contactSheet(
+          request.projectId,
+          request.assetId,
+          request.maxTiles ? Number(request.maxTiles) : 12,
+          principal,
+          new AbortController().signal,
+        );
       }
       case "video.v1.create_invitation":
       case "video.v1.redeem_invitation":

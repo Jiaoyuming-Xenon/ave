@@ -20,6 +20,7 @@ import {
   type Rational,
   type SourceAsset,
   type StreamDescriptor,
+  type ContactSheetResult,
 } from "#video-editor/contracts/v1";
 
 const execFileAsync = promisify(execFile);
@@ -383,6 +384,81 @@ export class MediaService {
       );
     }
     return { document, streams };
+  }
+
+  /**
+   * Generate a bounded contact sheet (tiled JPEG) for one asset into CAS and
+   * return bounded metadata. Tiles are sampled evenly in source time from the
+   * presentation index; the image itself stays in CAS and is cited by hash.
+   */
+  async contactSheet(
+    projectId: string,
+    assetId: string,
+    maxTiles: number,
+    principal: EditorPrincipal,
+    signal: AbortSignal,
+  ): Promise<ContactSheetResult> {
+    const project = this.store.project(projectId, principal);
+    const asset = project.assets.find((a) => a.assetId === assetId);
+    if (!asset) editorFailure("ASSET_NOT_FOUND", "The asset is not in this project");
+    if ((await sha256File(this.cas.pathFor(asset.original))) !== asset.original.sha256)
+      editorFailure("ARTIFACT_HASH_MISMATCH", "Source changed before contact sheet");
+    const indexDoc = JSON.parse((await this.cas.readBytes(asset.presentationIndex)).toString("utf8")) as {
+      sourceSha256: string;
+      streams: Array<{ streamIndex: number; streamUid: string; timeBase: { num: string; den: string } }>;
+      frames: Array<{ stream_index: number; media_type: string; pts?: string; duration?: string }>;
+    };
+    const video = asset.streams.find((s) => s.kind === "video");
+    if (!video) editorFailure("CAPABILITY_UNAVAILABLE", "The asset has no video stream");
+    const frames = indexDoc.frames.filter(
+      (f) => f.stream_index === video.streamIndex && f.media_type === "video",
+    );
+    if (!frames.length) editorFailure("CAPABILITY_UNAVAILABLE", "The video stream has no indexed frames");
+    const base = { num: BigInt(indexDoc.streams.find((s) => s.streamUid === video.streamUid)!.timeBase.num), den: BigInt(indexDoc.streams.find((s) => s.streamUid === video.streamUid)!.timeBase.den) };
+    const tiles = Math.max(1, Math.min(maxTiles, frames.length, 36));
+    const columns = Math.ceil(Math.sqrt(tiles));
+    const rows = Math.ceil(tiles / columns);
+    const tileW = 320;
+    const tileH = Math.max(1, Math.round((tileW * (video.height ?? 180)) / (video.width ?? 320)));
+    // Evenly spaced source ordinals -> seconds in the source clock; pad the
+    // selection with the last frame so the tile grid is always complete.
+    const ordinals: number[] = [];
+    for (let i = 0; i < tiles; i++) ordinals.push(Math.floor((i * frames.length) / tiles));
+    while (ordinals.length < columns * rows) ordinals.push(ordinals[ordinals.length - 1]!);
+    const tileSeconds = ordinals.slice(0, tiles).map((o) => {
+      const pts = BigInt(frames[o]?.pts ?? "0");
+      return (Number(pts * base.num) / Number(base.den)).toFixed(6);
+    });
+    const select = ordinals.map((o) => `eq(n,${o})`).join("+");
+    const directory = await mkdtemp(path.join(tmpdir(), "video-contact-"));
+    try {
+      const output = path.join(directory, "sheet.jpg");
+      await this.spawnChecked(this.tools.ffmpeg, [
+        "-nostdin", "-v", "error", "-xerror", "-i", this.cas.pathFor(asset.original),
+        "-vf", `select='${select}',scale=${tileW}:${tileH}:force_original_aspect_ratio=decrease,pad=${tileW}:${tileH}:(ow-iw)/2:(oh-ih)/2,setsar=1,tile=${columns}x${rows}`,
+        "-frames:v", "1", "-q:v", "4", output,
+      ], signal);
+      const blob = await this.cas.importFile(output, "image/jpeg");
+      const probed = await this.probe(this.cas.pathFor(blob));
+      const img = probed.document.streams.find((s) => s.codec_type === "video");
+      if (!img || img.width !== columns * tileW || img.height !== rows * tileH)
+        editorFailure("QA_FAILED", "Contact sheet geometry differs from the requested grid");
+      return {
+        artifactId: `contact:${assetId}:${blob.sha256.slice(0, 16)}`,
+        projectId,
+        assetId,
+        sourceSha256: asset.original.sha256,
+        columns,
+        rows,
+        tiles,
+        tileWidth: tileW,
+        tileHeight: tileH,
+        tileSourceSeconds: tileSeconds,
+        blob,
+      };
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   }
 
   /**

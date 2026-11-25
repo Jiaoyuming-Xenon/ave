@@ -35,6 +35,10 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
   validate_edit_plan: "Validate a proposed edit without saving or executing it.",
   submit_edit_plan:
     "Submit an edit proposal for human review and terminate. This does not approve, render or export.",
+  get_contact_sheet:
+    "Bounded contact-sheet metadata for one asset (streams, grid budget, index hash). Never returns pixels.",
+  get_qa_report:
+    "Read the daemon QA artifact reference for a job: state, revision and qa hash. Never infers pass/fail.",
 };
 
 /**

@@ -280,7 +280,7 @@ export const ArtifactRefSchema = z
     projectId: id,
     jobId: id,
     revision: uint,
-    kind: z.enum(["probe", "proxy", "mask", "candidate", "export", "qa", "manifest"]),
+    kind: z.enum(["probe", "proxy", "mask", "candidate", "export", "qa", "manifest", "contact"]),
     blob: BlobRefSchema,
   })
   .strict();
@@ -390,6 +390,11 @@ export const VideoToolCallSchema = z.discriminatedUnion("tool", [
   }),
   toolEnvelope.extend({ tool: z.literal("validate_edit_plan"), args: EditPlanDraftV1Schema }),
   toolEnvelope.extend({ tool: z.literal("submit_edit_plan"), args: EditPlanDraftV1Schema }),
+  toolEnvelope.extend({
+    tool: z.literal("get_contact_sheet"),
+    args: z.object({ assetId: id, contentHash: sha256 }).strict(),
+  }),
+  toolEnvelope.extend({ tool: z.literal("get_qa_report"), args: z.object({ jobId: id }).strict() }),
 ]);
 export const PlanReviewRequestSchema = z
   .object({
@@ -613,10 +618,45 @@ export const stopPlanningRunRpc = {
   input: PlanningRunRequestSchema,
   output: PlanningRunStatusSchema,
 };
+export const ContactSheetRequestSchema = z
+  .object({
+    requestId,
+    projectId: id,
+    assetId: id,
+    maxTiles: z
+      .string()
+      .regex(/^(0|[1-9][0-9]{0,2})$/)
+      .optional(),
+  })
+  .strict();
+export type ContactSheetRequest = z.infer<typeof ContactSheetRequestSchema>;
+
+export const ContactSheetResultSchema = z
+  .object({
+    artifactId: id,
+    projectId: id,
+    assetId: id,
+    sourceSha256: sha256,
+    columns: z.number().int().positive(),
+    rows: z.number().int().positive(),
+    tiles: z.number().int().nonnegative(),
+    tileWidth: z.number().int().positive(),
+    tileHeight: z.number().int().positive(),
+    tileSourceSeconds: z.array(z.string()),
+    blob: BlobRefSchema,
+  })
+  .strict();
+export type ContactSheetResult = z.infer<typeof ContactSheetResultSchema>;
+
 export const analyzeAssetRpc = {
   name: "video.v1.analyze_asset",
   input: AnalyzeAssetInputSchema,
   output: CreateJobResultSchema,
+};
+export const contactSheetRpc = {
+  name: "video.v1.contact_sheet",
+  input: ContactSheetRequestSchema,
+  output: ContactSheetResultSchema,
 };
 export const getPlanningRunRpc = {
   name: "video.v1.get_planning_run",
