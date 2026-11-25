@@ -432,5 +432,29 @@
     "schema": "EventsResult",
     "valid": false,
     "value": { "events": [], "snapshotRequired": "no" }
+  },
+  {
+    "name": "accepted edit plan is a proposed single trim",
+    "schema": "AcceptedEditPlan",
+    "valid": true,
+    "value": { "schemaVersion": "video.edit-plan/v1", "projectId": "proj", "baseTimelineRevision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "intent": "trim the middle", "trimOperations": [{ "opId": "op", "order": "1", "trackId": "track", "clipId": "clip", "source": { "assetId": "asset", "assetContentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "streamUid": "stream:0", "probeRevision": "1" }, "sourceRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } }, "recordRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } } }], "transformOperations": [], "audioOperations": [], "transitionOperations": [], "subtitleOperations": [], "generationRequests": [], "qaRequirements": [], "externalDestinations": [], "maxCostMicros": "100", "deterministicBackendId": "ffmpeg", "planId": "plan", "revision": "1", "runId": "run", "idempotencyKey": "key", "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "status": "proposed" }
+  },
+  {
+    "name": "accepted edit plan status must be proposed",
+    "schema": "AcceptedEditPlan",
+    "valid": false,
+    "value": { "schemaVersion": "video.edit-plan/v1", "projectId": "proj", "baseTimelineRevision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "intent": "trim", "trimOperations": [], "transformOperations": [], "audioOperations": [], "transitionOperations": [], "subtitleOperations": [], "generationRequests": [], "qaRequirements": [], "externalDestinations": [], "maxCostMicros": "100", "deterministicBackendId": "ffmpeg", "planId": "plan", "revision": "1", "runId": "run", "idempotencyKey": "key", "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "status": "accepted" }
+  },
+  {
+    "name": "project snapshot empty collections",
+    "schema": "ProjectSnapshot",
+    "valid": true,
+    "value": { "protocolVersion": "1", "projectId": "p", "title": "T", "revision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "assets": [], "plans": [], "approvals": [], "jobs": [], "latestSeq": "0" }
+  },
+  {
+    "name": "project snapshot protocol version must be 1",
+    "schema": "ProjectSnapshot",
+    "valid": false,
+    "value": { "protocolVersion": "2", "projectId": "p", "title": "T", "revision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "assets": [], "plans": [], "approvals": [], "jobs": [], "latestSeq": "0" }
   }
 ]
