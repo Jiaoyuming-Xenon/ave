@@ -10,9 +10,9 @@ const source = new URL("packages/coding-agent/src/core/", pi);
 const expected = [
   "get_asset_metadata",
   "get_contact_sheet",
-  "get_qa_report",
   "get_job_status",
   "get_project_snapshot",
+  "get_qa_report",
   "submit_edit_plan",
   "validate_edit_plan",
 ];
