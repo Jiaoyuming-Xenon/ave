@@ -1,0 +1,2632 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:video-editor:v1:bundle",
+  "$defs": {
+    "AcceptedEditPlan": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:AcceptedEditPlan",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "video.edit-plan/v1"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "baseTimelineRevision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "baseAssetManifestHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "preferredDeterministicBackendId": {
+          "type": "string",
+          "enum": [
+            "ffmpeg",
+            "filmcraft"
+          ]
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "trimOperations": {
+          "maxItems": 1024,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "opId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "order": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "trackId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "clipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "source": {
+                "$ref": "urn:video-editor:v1:AssetStreamRef"
+              },
+              "sourceRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "recordRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              }
+            },
+            "required": [
+              "opId",
+              "order",
+              "trackId",
+              "clipId",
+              "source",
+              "sourceRange",
+              "recordRange"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "transformOperations": {
+          "maxItems": 1024,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "opId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "order": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "trackId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "clipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "source": {
+                "$ref": "urn:video-editor:v1:AssetStreamRef"
+              },
+              "sourceRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "recordRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "crop": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  },
+                  "y": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  },
+                  "width": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  },
+                  "height": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
+              },
+              "scale": {
+                "type": "object",
+                "properties": {
+                  "width": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  },
+                  "height": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  }
+                },
+                "required": [
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
+              },
+              "rotationDegrees": {
+                "type": "string",
+                "enum": [
+                  "0",
+                  "90",
+                  "180",
+                  "270"
+                ]
+              }
+            },
+            "required": [
+              "opId",
+              "order",
+              "trackId",
+              "clipId",
+              "source",
+              "sourceRange",
+              "recordRange",
+              "crop",
+              "scale",
+              "rotationDegrees"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "audioOperations": {
+          "maxItems": 1024,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "opId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "order": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "trackId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "clipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "source": {
+                "$ref": "urn:video-editor:v1:AssetStreamRef"
+              },
+              "sourceRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "recordRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "gainMilli": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9][0-9]*)$"
+              },
+              "mute": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "opId",
+              "order",
+              "trackId",
+              "clipId",
+              "source",
+              "sourceRange",
+              "recordRange",
+              "gainMilli",
+              "mute"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "transitionOperations": {
+          "maxItems": 1024,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "opId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "order": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "trackId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "clipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "leftClipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "rightClipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "crossfade",
+                  "fade"
+                ]
+              },
+              "duration": {
+                "$ref": "urn:video-editor:v1:Rational"
+              }
+            },
+            "required": [
+              "opId",
+              "order",
+              "trackId",
+              "clipId",
+              "leftClipId",
+              "rightClipId",
+              "kind",
+              "duration"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "subtitleOperations": {
+          "maxItems": 4096,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "opId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "order": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "trackId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "clipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "cueId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "range": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 16384
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "metadata",
+                  "burn-in"
+                ]
+              }
+            },
+            "required": [
+              "opId",
+              "order",
+              "trackId",
+              "clipId",
+              "cueId",
+              "range",
+              "text",
+              "mode"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "generationRequests": {
+          "maxItems": 64,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "shotId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "providerProfileId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "modelId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16384
+              },
+              "negativePrompt": {
+                "type": "string",
+                "maxLength": 16384
+              },
+              "maskRevisionId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "referenceAssetIds": {
+                "maxItems": 16,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                }
+              },
+              "referenceManifestHash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "samplingMapHash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "frameCount": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "sampleFps": {
+                "$ref": "urn:video-editor:v1:Rational"
+              },
+              "seedPolicy": {
+                "type": "string",
+                "enum": [
+                  "fixed",
+                  "random"
+                ]
+              },
+              "seed": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "maxCostMicros": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              }
+            },
+            "required": [
+              "requestId",
+              "shotId",
+              "providerProfileId",
+              "modelId",
+              "prompt",
+              "negativePrompt",
+              "maskRevisionId",
+              "referenceAssetIds",
+              "referenceManifestHash",
+              "samplingMapHash",
+              "frameCount",
+              "sampleFps",
+              "seedPolicy",
+              "seed",
+              "maxCostMicros"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "qaRequirements": {
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "gate": {
+                "type": "string",
+                "enum": [
+                  "G0",
+                  "G1",
+                  "G2",
+                  "G3",
+                  "G4",
+                  "G5"
+                ]
+              },
+              "required": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "gate",
+              "required"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "externalDestinations": {
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "maxCostMicros": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "deterministicBackendId": {
+          "type": "string",
+          "enum": [
+            "ffmpeg",
+            "filmcraft"
+          ]
+        },
+        "planId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "planHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "status": {
+          "type": "string",
+          "const": "proposed"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "baseTimelineRevision",
+        "baseAssetManifestHash",
+        "intent",
+        "trimOperations",
+        "transformOperations",
+        "audioOperations",
+        "transitionOperations",
+        "subtitleOperations",
+        "generationRequests",
+        "qaRequirements",
+        "externalDestinations",
+        "maxCostMicros",
+        "deterministicBackendId",
+        "planId",
+        "revision",
+        "runId",
+        "idempotencyKey",
+        "planHash",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "ApprovalDecision": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:ApprovalDecision",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "approvalId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "expectedRevision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "approve",
+            "reject"
+          ]
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "requestId",
+        "approvalId",
+        "expectedRevision",
+        "decision"
+      ],
+      "additionalProperties": false
+    },
+    "ApprovalGrant": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:ApprovalGrant",
+      "type": "object",
+      "properties": {
+        "grantId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "approvalId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "subjectHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "planHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "baseTimelineRevision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "preview",
+            "final",
+            "export"
+          ]
+        },
+        "approvedByDeviceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approvedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+        },
+        "consumedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+        },
+        "revokedReason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "grantId",
+        "approvalId",
+        "projectId",
+        "subjectHash",
+        "baseTimelineRevision",
+        "purpose",
+        "approvedByDeviceId",
+        "approvedAt",
+        "expiresAt"
+      ],
+      "additionalProperties": false
+    },
+    "ApprovalRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:ApprovalRequest",
+      "type": "object",
+      "properties": {
+        "approvalId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "subjectType": {
+          "type": "string",
+          "enum": [
+            "mask_revision",
+            "keyframe_set",
+            "edit_plan",
+            "candidate_revision",
+            "export"
+          ]
+        },
+        "subjectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "subjectRevision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "subjectHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "planHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "baseTimelineRevision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "input",
+            "preview",
+            "final",
+            "export"
+          ]
+        },
+        "requiredInputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "revision": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "hash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "type",
+              "id",
+              "revision",
+              "hash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "diffSummary": {
+          "type": "object",
+          "properties": {
+            "intent": {
+              "type": "string"
+            },
+            "operationCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "summary": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "intent",
+            "operationCount",
+            "summary"
+          ],
+          "additionalProperties": false
+        },
+        "generationCostCapMicros": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "externalDestinations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected",
+            "superseded",
+            "expired",
+            "revoked"
+          ]
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+        }
+      },
+      "required": [
+        "approvalId",
+        "projectId",
+        "subjectType",
+        "subjectId",
+        "subjectRevision",
+        "subjectHash",
+        "baseTimelineRevision",
+        "purpose",
+        "requiredInputs",
+        "diffSummary",
+        "generationCostCapMicros",
+        "externalDestinations",
+        "status",
+        "expiresAt"
+      ],
+      "additionalProperties": false
+    },
+    "ArtifactRef": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:ArtifactRef",
+      "type": "object",
+      "properties": {
+        "artifactId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "jobId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "probe",
+            "proxy",
+            "mask",
+            "candidate",
+            "export",
+            "qa",
+            "manifest"
+          ]
+        },
+        "blob": {
+          "$ref": "urn:video-editor:v1:BlobRef"
+        }
+      },
+      "required": [
+        "artifactId",
+        "projectId",
+        "jobId",
+        "revision",
+        "kind",
+        "blob"
+      ],
+      "additionalProperties": false
+    },
+    "AssetStreamRef": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:AssetStreamRef",
+      "type": "object",
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "assetContentHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "streamUid": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "probeRevision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "assetId",
+        "assetContentHash",
+        "streamUid",
+        "probeRevision"
+      ],
+      "additionalProperties": false
+    },
+    "BlobRef": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:BlobRef",
+      "type": "object",
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "bytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "sha256",
+        "bytes",
+        "mediaType"
+      ],
+      "additionalProperties": false
+    },
+    "CapabilitySet": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:CapabilitySet",
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "type": "string",
+          "const": "1"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deterministicBackends": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "enum": [
+                  "ffmpeg",
+                  "filmcraft"
+                ]
+              },
+              "available": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "available"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "workerProfiles": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:video-editor:v1:WorkerProfile"
+          }
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "features",
+        "operations",
+        "deterministicBackends",
+        "workerProfiles"
+      ],
+      "additionalProperties": false
+    },
+    "CommitUploadRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:CommitUploadRequest",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "uploadId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "finalSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "requestId",
+        "uploadId",
+        "finalSha256"
+      ],
+      "additionalProperties": false
+    },
+    "CreateJobRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:CreateJobRequest",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "approvalId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "grantId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "expectedRevision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "requestId",
+        "projectId",
+        "approvalId",
+        "grantId",
+        "expectedRevision"
+      ],
+      "additionalProperties": false
+    },
+    "CreateJobResult": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:CreateJobResult",
+      "type": "object",
+      "properties": {
+        "job": {
+          "$ref": "urn:video-editor:v1:JobSnapshot"
+        },
+        "deduplicated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job",
+        "deduplicated"
+      ],
+      "additionalProperties": false
+    },
+    "CreateProjectInput": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:CreateProjectInput",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "requestId",
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "CreateUploadRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:CreateUploadRequest",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "expectedSize": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "expectedSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "requestId",
+        "projectId",
+        "displayName",
+        "expectedSize",
+        "expectedSha256",
+        "mediaType"
+      ],
+      "additionalProperties": false
+    },
+    "DecideApprovalResult": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:DecideApprovalResult",
+      "type": "object",
+      "properties": {
+        "approval": {
+          "$ref": "urn:video-editor:v1:ApprovalRequest"
+        },
+        "grant": {
+          "$ref": "urn:video-editor:v1:ApprovalGrant"
+        }
+      },
+      "required": [
+        "approval"
+      ],
+      "additionalProperties": false
+    },
+    "EditPlanDraftV1": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:EditPlanDraftV1",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "const": "video.edit-plan/v1"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "baseTimelineRevision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "baseAssetManifestHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "preferredDeterministicBackendId": {
+          "type": "string",
+          "enum": [
+            "ffmpeg",
+            "filmcraft"
+          ]
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "trimOperations": {
+          "maxItems": 1024,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "opId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "order": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "trackId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "clipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "source": {
+                "$ref": "urn:video-editor:v1:AssetStreamRef"
+              },
+              "sourceRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "recordRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              }
+            },
+            "required": [
+              "opId",
+              "order",
+              "trackId",
+              "clipId",
+              "source",
+              "sourceRange",
+              "recordRange"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "transformOperations": {
+          "maxItems": 1024,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "opId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "order": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "trackId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "clipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "source": {
+                "$ref": "urn:video-editor:v1:AssetStreamRef"
+              },
+              "sourceRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "recordRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "crop": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  },
+                  "y": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  },
+                  "width": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  },
+                  "height": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
+              },
+              "scale": {
+                "type": "object",
+                "properties": {
+                  "width": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  },
+                  "height": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$"
+                  }
+                },
+                "required": [
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
+              },
+              "rotationDegrees": {
+                "type": "string",
+                "enum": [
+                  "0",
+                  "90",
+                  "180",
+                  "270"
+                ]
+              }
+            },
+            "required": [
+              "opId",
+              "order",
+              "trackId",
+              "clipId",
+              "source",
+              "sourceRange",
+              "recordRange",
+              "crop",
+              "scale",
+              "rotationDegrees"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "audioOperations": {
+          "maxItems": 1024,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "opId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "order": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "trackId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "clipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "source": {
+                "$ref": "urn:video-editor:v1:AssetStreamRef"
+              },
+              "sourceRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "recordRange": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "gainMilli": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9][0-9]*)$"
+              },
+              "mute": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "opId",
+              "order",
+              "trackId",
+              "clipId",
+              "source",
+              "sourceRange",
+              "recordRange",
+              "gainMilli",
+              "mute"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "transitionOperations": {
+          "maxItems": 1024,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "opId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "order": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "trackId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "clipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "leftClipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "rightClipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "crossfade",
+                  "fade"
+                ]
+              },
+              "duration": {
+                "$ref": "urn:video-editor:v1:Rational"
+              }
+            },
+            "required": [
+              "opId",
+              "order",
+              "trackId",
+              "clipId",
+              "leftClipId",
+              "rightClipId",
+              "kind",
+              "duration"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "subtitleOperations": {
+          "maxItems": 4096,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "opId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "order": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "trackId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "clipId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "cueId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "range": {
+                "$ref": "urn:video-editor:v1:TimeRange"
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 16384
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "metadata",
+                  "burn-in"
+                ]
+              }
+            },
+            "required": [
+              "opId",
+              "order",
+              "trackId",
+              "clipId",
+              "cueId",
+              "range",
+              "text",
+              "mode"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "generationRequests": {
+          "maxItems": 64,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "requestId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "shotId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "providerProfileId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "modelId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16384
+              },
+              "negativePrompt": {
+                "type": "string",
+                "maxLength": 16384
+              },
+              "maskRevisionId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "referenceAssetIds": {
+                "maxItems": 16,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                }
+              },
+              "referenceManifestHash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "samplingMapHash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "frameCount": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "sampleFps": {
+                "$ref": "urn:video-editor:v1:Rational"
+              },
+              "seedPolicy": {
+                "type": "string",
+                "enum": [
+                  "fixed",
+                  "random"
+                ]
+              },
+              "seed": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              "maxCostMicros": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              }
+            },
+            "required": [
+              "requestId",
+              "shotId",
+              "providerProfileId",
+              "modelId",
+              "prompt",
+              "negativePrompt",
+              "maskRevisionId",
+              "referenceAssetIds",
+              "referenceManifestHash",
+              "samplingMapHash",
+              "frameCount",
+              "sampleFps",
+              "seedPolicy",
+              "seed",
+              "maxCostMicros"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "qaRequirements": {
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "gate": {
+                "type": "string",
+                "enum": [
+                  "G0",
+                  "G1",
+                  "G2",
+                  "G3",
+                  "G4",
+                  "G5"
+                ]
+              },
+              "required": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "gate",
+              "required"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "externalDestinations": {
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "maxCostMicros": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "baseTimelineRevision",
+        "baseAssetManifestHash",
+        "intent",
+        "trimOperations",
+        "transformOperations",
+        "audioOperations",
+        "transitionOperations",
+        "subtitleOperations",
+        "generationRequests",
+        "qaRequirements",
+        "externalDestinations",
+        "maxCostMicros"
+      ],
+      "additionalProperties": false
+    },
+    "EditorError": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:EditorError",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "sanitizedDetail": {
+          "type": "string",
+          "maxLength": 2048
+        }
+      },
+      "required": [
+        "code",
+        "retryable",
+        "sanitizedDetail"
+      ],
+      "additionalProperties": false
+    },
+    "EditorEvent": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:EditorEvent",
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "type": "string",
+          "const": "1"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "jobId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "eventId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "seq": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "causationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {}
+      },
+      "required": [
+        "protocolVersion",
+        "projectId",
+        "eventId",
+        "seq",
+        "occurredAt",
+        "type",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    "EditorPrincipal": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:EditorPrincipal",
+      "type": "object",
+      "properties": {
+        "principalId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "role": {
+          "$ref": "urn:video-editor:v1:EditorRole"
+        },
+        "projectIds": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "principalId",
+        "role",
+        "projectIds"
+      ],
+      "additionalProperties": false
+    },
+    "EditorRole": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:EditorRole",
+      "type": "string",
+      "enum": [
+        "viewer",
+        "operator",
+        "owner"
+      ]
+    },
+    "EventsRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:EventsRequest",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "afterSeq": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "projectId",
+        "afterSeq"
+      ],
+      "additionalProperties": false
+    },
+    "EventsResult": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:EventsResult",
+      "type": "object",
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:video-editor:v1:EditorEvent"
+          }
+        },
+        "snapshotRequired": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "events",
+        "snapshotRequired"
+      ],
+      "additionalProperties": false
+    },
+    "JobControlRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:JobControlRequest",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "jobId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "cancel",
+            "pause",
+            "resume",
+            "retry"
+          ]
+        }
+      },
+      "required": [
+        "projectId",
+        "jobId",
+        "requestId",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "JobRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:JobRequest",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "jobId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        }
+      },
+      "required": [
+        "projectId",
+        "jobId"
+      ],
+      "additionalProperties": false
+    },
+    "JobSnapshot": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:JobSnapshot",
+      "type": "object",
+      "properties": {
+        "jobId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "planHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "approvalId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "candidateRevision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "parentRevision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "analysis",
+            "preview",
+            "final",
+            "export"
+          ]
+        },
+        "state": {
+          "$ref": "urn:video-editor:v1:JobState"
+        },
+        "phaseDetail": {
+          "type": "string"
+        },
+        "progress": {
+          "type": "object",
+          "properties": {
+            "completedUnits": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            "totalUnits": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            }
+          },
+          "required": [
+            "completedUnits"
+          ],
+          "additionalProperties": false
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:video-editor:v1:ArtifactRef"
+          }
+        },
+        "error": {
+          "$ref": "urn:video-editor:v1:EditorError"
+        }
+      },
+      "required": [
+        "jobId",
+        "projectId",
+        "revision",
+        "planHash",
+        "kind",
+        "state",
+        "artifacts"
+      ],
+      "additionalProperties": false
+    },
+    "JobState": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:JobState",
+      "type": "string",
+      "enum": [
+        "draft",
+        "analyzing",
+        "awaiting_plan_approval",
+        "awaiting_inputs",
+        "rendering_preview",
+        "awaiting_review",
+        "rendering_final",
+        "validating",
+        "awaiting_delivery_approval",
+        "pausing",
+        "paused",
+        "completed",
+        "failed",
+        "cancel_requested",
+        "cancelled"
+      ]
+    },
+    "PlanReviewRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:PlanReviewRequest",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "toolCallId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "draft": {
+          "$ref": "urn:video-editor:v1:EditPlanDraftV1"
+        }
+      },
+      "required": [
+        "requestId",
+        "runId",
+        "toolCallId",
+        "draft"
+      ],
+      "additionalProperties": false
+    },
+    "PlanReviewResult": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:PlanReviewResult",
+      "type": "object",
+      "properties": {
+        "plan": {
+          "$ref": "urn:video-editor:v1:AcceptedEditPlan"
+        },
+        "approval": {
+          "$ref": "urn:video-editor:v1:ApprovalRequest"
+        }
+      },
+      "required": [
+        "plan",
+        "approval"
+      ],
+      "additionalProperties": false
+    },
+    "ProjectRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:ProjectRequest",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        }
+      },
+      "required": [
+        "projectId"
+      ],
+      "additionalProperties": false
+    },
+    "ProjectSnapshot": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:ProjectSnapshot",
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "type": "string",
+          "const": "1"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "baseAssetManifestHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:video-editor:v1:SourceAsset"
+          }
+        },
+        "plans": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:video-editor:v1:AcceptedEditPlan"
+          }
+        },
+        "approvals": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:video-editor:v1:ApprovalRequest"
+          }
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:video-editor:v1:JobSnapshot"
+          }
+        },
+        "latestSeq": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "projectId",
+        "title",
+        "revision",
+        "baseAssetManifestHash",
+        "assets",
+        "plans",
+        "approvals",
+        "jobs",
+        "latestSeq"
+      ],
+      "additionalProperties": false
+    },
+    "Rational": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:Rational",
+      "type": "object",
+      "properties": {
+        "num": {
+          "type": "string",
+          "pattern": "^-?(0|[1-9][0-9]*)$"
+        },
+        "den": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "num",
+        "den"
+      ],
+      "additionalProperties": false
+    },
+    "ReadAssetChunkMetadata": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:ReadAssetChunkMetadata",
+      "type": "object",
+      "properties": {
+        "offset": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "bytesLength": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "totalBytes": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "chunkSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "assetSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "protocolVersion": {
+          "type": "string",
+          "const": "1"
+        }
+      },
+      "required": [
+        "offset",
+        "bytesLength",
+        "totalBytes",
+        "revision",
+        "chunkSha256",
+        "assetSha256",
+        "protocolVersion"
+      ],
+      "additionalProperties": false
+    },
+    "ReadAssetChunkRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:ReadAssetChunkRequest",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "assetId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "offset": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "length": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "required": [
+        "projectId",
+        "assetId",
+        "revision",
+        "offset",
+        "length"
+      ],
+      "additionalProperties": false
+    },
+    "SourceAsset": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:SourceAsset",
+      "type": "object",
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "original": {
+          "$ref": "urn:video-editor:v1:BlobRef"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "streams": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:video-editor:v1:StreamDescriptor"
+          }
+        },
+        "presentationIndex": {
+          "$ref": "urn:video-editor:v1:BlobRef"
+        },
+        "probe": {
+          "$ref": "urn:video-editor:v1:BlobRef"
+        },
+        "proxy": {
+          "$ref": "urn:video-editor:v1:BlobRef"
+        },
+        "sourceNeverWritable": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "assetId",
+        "original",
+        "displayName",
+        "streams",
+        "presentationIndex",
+        "probe",
+        "sourceNeverWritable"
+      ],
+      "additionalProperties": false
+    },
+    "StreamDescriptor": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:StreamDescriptor",
+      "type": "object",
+      "properties": {
+        "streamUid": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "streamIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "video",
+            "audio",
+            "subtitle",
+            "attachment",
+            "data"
+          ]
+        },
+        "codec": {
+          "type": "string",
+          "minLength": 1
+        },
+        "codecProfile": {
+          "type": "string"
+        },
+        "timeBase": {
+          "$ref": "urn:video-editor:v1:Rational"
+        },
+        "averageRate": {
+          "$ref": "urn:video-editor:v1:Rational"
+        },
+        "width": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "height": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "sampleRate": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "channels": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "channelLayout": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "disposition": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "color": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "sampleAspectRatio": {
+          "type": "string"
+        },
+        "rotation": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "streamUid",
+        "streamIndex",
+        "kind",
+        "codec",
+        "timeBase",
+        "disposition"
+      ],
+      "additionalProperties": false
+    },
+    "TimeRange": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:TimeRange",
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "urn:video-editor:v1:Rational"
+        },
+        "duration": {
+          "$ref": "urn:video-editor:v1:Rational"
+        }
+      },
+      "required": [
+        "start",
+        "duration"
+      ],
+      "additionalProperties": false
+    },
+    "UploadRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:UploadRequest",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "uploadId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        }
+      },
+      "required": [
+        "projectId",
+        "uploadId"
+      ],
+      "additionalProperties": false
+    },
+    "UploadStatus": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:UploadStatus",
+      "type": "object",
+      "properties": {
+        "uploadId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "chunkSize": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "nextOffset": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "uploadId",
+        "chunkSize",
+        "nextOffset"
+      ],
+      "additionalProperties": false
+    },
+    "VideoToolCall": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:VideoToolCall",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "protocolVersion": {
+              "type": "string",
+              "const": "1"
+            },
+            "toolCallId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            "tool": {
+              "type": "string",
+              "const": "get_project_snapshot"
+            },
+            "args": {
+              "$ref": "urn:video-editor:v1:ProjectRequest"
+            }
+          },
+          "required": [
+            "protocolVersion",
+            "toolCallId",
+            "tool",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "protocolVersion": {
+              "type": "string",
+              "const": "1"
+            },
+            "toolCallId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            "tool": {
+              "type": "string",
+              "const": "get_asset_metadata"
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "assetId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                },
+                "contentHash": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "assetId",
+                "contentHash"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "protocolVersion",
+            "toolCallId",
+            "tool",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "protocolVersion": {
+              "type": "string",
+              "const": "1"
+            },
+            "toolCallId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            "tool": {
+              "type": "string",
+              "const": "get_job_status"
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "jobId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                }
+              },
+              "required": [
+                "jobId"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "protocolVersion",
+            "toolCallId",
+            "tool",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "protocolVersion": {
+              "type": "string",
+              "const": "1"
+            },
+            "toolCallId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            "tool": {
+              "type": "string",
+              "const": "validate_edit_plan"
+            },
+            "args": {
+              "$ref": "urn:video-editor:v1:EditPlanDraftV1"
+            }
+          },
+          "required": [
+            "protocolVersion",
+            "toolCallId",
+            "tool",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "protocolVersion": {
+              "type": "string",
+              "const": "1"
+            },
+            "toolCallId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            "tool": {
+              "type": "string",
+              "const": "submit_edit_plan"
+            },
+            "args": {
+              "$ref": "urn:video-editor:v1:EditPlanDraftV1"
+            }
+          },
+          "required": [
+            "protocolVersion",
+            "toolCallId",
+            "tool",
+            "args"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "WorkerProfile": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:WorkerProfile",
+      "type": "object",
+      "properties": {
+        "profileId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "modelDigest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "maxFrames": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "maxWidth": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxHeight": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "colorSpaces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "profileId",
+        "engine",
+        "colorSpaces"
+      ],
+      "additionalProperties": false
+    },
+    "WriteUploadChunk": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:WriteUploadChunk",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "uploadId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "offset": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "length": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "chunkSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "requestId",
+        "uploadId",
+        "offset",
+        "length",
+        "chunkSha256"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

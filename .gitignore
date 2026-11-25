@@ -4,6 +4,8 @@
 /filmcraft/
 /.filmcraft-incomplete-backup/
 /references/
+# Runnable local checkout; the publishable source delta lives in downstream/paseo/.
+/vendor/paseo/
 
 # Local session evidence and large source material.
 /1.txt

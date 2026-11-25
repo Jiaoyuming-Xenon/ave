@@ -1,0 +1,55 @@
+# K 实施执行记录
+
+本文件只记录产品实施与实测，不修改 M0 调研记录。
+
+## 2026-11-25 · M1 启动
+
+- [x] 等 FilmCraft 调研 Phase 14 完成：根提交 `21c2892` 与统计提交 `8a6954c`，18 份 Markdown、2 份 SVG 和三个锁定参考校验通过。
+- [x] 完整阅读产品、架构、Agent、媒体、远程、接口、交付与风险规划。
+- [x] 精读 Pi SDK/ResourceLoader、Paseo 插件/协议/权限/测试/构建、FilmCraft Session/CLI/control/export、VACE 推理入口。
+- [x] 在 `vendor/paseo` 建立独立 `k/video-editor` downstream；原 `paseo/`、`pi/`、`filmcraft/` 保持只读。
+- [x] 使用 `npm --prefix vendor/paseo ci --ignore-scripts` 安装锁定依赖。
+- [x] 确认 Node 22 自带 SQLite 3.51.2 可用，FFmpeg 8.0.1 有 libx264/AAC/NVENC，GPU 为 RTX 5060 Laptop 8 GiB。
+- [x] 建立 ADR 0001 和 `plugins/video-editor/shared/contracts/v1.ts` 第一版共享契约。
+- [x] 实现 daemon 独占 SQLite/CAS、项目授权、幂等审批和持久 Job：`packages/server/src/server/video/`。
+- **M1 单段裁剪的本地交付链路**：隔离 daemon 的 `editor.e2e.test.ts` 现已覆盖二进制上传 → preview 审批 → 预览 → 独立 final 审批 → 源尺寸候选 → 独立 export 审批 → 分块下载成品及 manifest。每次均验证用途错误/已消费的 grant 被拒。测试下载成品后重新完整解码：320×180 H.264、30 帧、1 秒；AAC 48 kHz 时间轴 48000 ticks；两流从 PTS 0 开始。逐块校验、下载总 hash、final candidate hash、QA 关联和源 hash 均通过。审批由测试客户端提交，不是人工画质验收。
+- 当前 `store.test.ts` 3/3、上述端到端用例 1/1，最新 server typecheck、生产构建、产物 JS 临时库 smoke 与 21 文件 lint 通过。普通插件 API 回归 7/7 在前一版已通过。
+- 修复生产构建的 TS6059：单独从原位共享 schema 编译到 server 包内，生产运行使用包内模块。server typecheck、生产 build、变更范围 lint（21 文件，0 警告/错误）通过；直接加载产出的 JS，在全新临时目录启动 editor 并创建 SQLite 项目成功。不是安装包测试。
+- 异步 store 工厂已用于启动/恢复测试；普通插件权限表和运行时与 upstream HEAD 一致。当前预览 profile 只开放单段 FFmpeg trim；FilmCraft、多段和其它未验证操作不能作为已支持功能。受限设备专用远程入口尚未开放。
+- E06 独立媒体基线：`python3 -I scripts/check_media_timebase.py` 已通过。合成 19 帧 VFR（40/80 ms）、非零首 PTS（2 s）、双 PCM 音轨与 1 条字幕；FFmpeg stream copy 保留逐包时间和内容以及完整解码 A/V 哈希。重置 PTS 的副本虽有相同解码哈希，时间比较仍能识别；丢失第二音轨的副本也被区分。临时素材不入库，此结果不覆盖 daemon、FilmCraft 或生成 Worker。
+- 预览时长回归：25 fps 原片的 `[0.120, 1.400)` 恰为 32 帧；旧预览强制 30 fps 后实测视频 38 帧、19/15 秒，音频仍为 32/25 秒。去掉强制重采样、预览编码采用滤镜时基，独立 FFmpeg 对照得到逐帧 PTS `i/25`、视频与音频均为 1.280 秒、首 PTS 均为零，完整解码且原文件 SHA-256 未变。`scripts/check_media_timebase.py` 新旧对照均通过，未放宽输出时长 QA。已在 `editor.e2e.test.ts` 增加 25 fps 用例并保留 30 fps；浏览器验收改回上述原始区间。媒体实现与 daemon E2E 文件 lint 通过，本轮 daemon 25 fps 用例和 server typecheck 在执行前被拦截，独立 FFmpeg 探针不替代产品或浏览器验收。
+- 镜头边界：`plugins/video-editor/worker/shot_index.py` 的输入是连续解码的 BGR 图与各自源 PTS/duration；检测器延迟返回的帧序号仅用作查找键，镜头区间用源 tick，不用平均 FPS 推算。`scripts/check_scene_cuts.py` 配固定 PySceneDetect `a696070d`，准备了硬切、无切点及重复 PTS 用例。独立 FFmpeg 全片解码实测验收原片为 19 帧纯黑、18 帧纯白，40/80 ms 相邻间隔，首 PTS 2 s，首白帧（序号 19）PTS 3.040 s，末帧结束 3.960 s。专用 Python 3.14 环境中安装了 OpenCV headless 4.13.0.92 和 NumPy 2.4.4；执行真实检测器的命令被权限模式拦截。以上切点是样片真值，不是检测器预测；未接入 daemon 调度或 SAM2。
+- E06 导入：新写入的 `video.presentation-index/v2` 关联源 SHA-256、流时基与 stream_index，逐帧保留十进制整数 PTS 与探测时长。独立 6 帧 VFR 样本首 PTS 2 s、步长 40/80 ms、帧 duration 均为 40 ms。`editor.e2e.test.ts` 已验证两个相邻超大 tick 可区分，并从实际导入的 3 秒 CFR 素材读回 CAS 索引，核对源哈希、流时基、90 帧和首末 PTS；未验收 VFR 成品导出。
+- W1 可移植契约：从 Zod 源生成 `plugins/video-editor/shared/contracts/v1.schema.json`，39 个 JSON Schema 定义，重新生成内容一致。TypeScript/Zod 和不联网的 Python/jsonschema 对相同 14 个正反样例全部通过；覆盖零分母、浮点时间、超大序号、非法审批值和两种 Job 形状。不是全版本兼容认证。
+- 上传重放：`create_upload` 同一声明返回原 ID；`commit_upload` 把素材、项目修订、提交回执和删除上传记录放进一个 SQLite 事务。成功后同一请求重放返回原素材，不推进项目或事件；修改哈希或 requestId 被拒。`upload.test.ts` 2/2：重开后续传；真实媒体在 ffprobe 不可用时保留已确认源字节，重开后完成提交，再次重开且禁用 ffprobe 时仍返回原回执。相同字节导入两个项目共享 CAS 原片，各有独立素材 ID 与名称，不能从项目 A 用 B 的 ID 读取。更新后的真实 WS/媒体 E2E 3/3、server typecheck 及相关 lint 均通过。测试覆盖成功后重发，未实际切断网络、强杀 daemon 或模拟断电。
+- 只读设备回环 WS：owner 兑换并授予项目 A；viewer 只能读 A 的最小摘要，读取 B、修改项目和普通插件调用被拒；撤销后原连接再次读取及重新连接均被拒。首次验收在握手超时，原因是视频连接没有普通 Session，普通回复分派丢弃了 `server_info`。已改为仅向当前视频 socket 定向发送受限回包，未放宽普通 Session 出站检查。移除诊断标记后 `editor.e2e.test.ts` 3/3 通过（大整数精度、真实媒体交付、设备只读用例），server typecheck、相关 lint 通过。仍仅是回环连接，非手机独立配对或 protected relay。
+- 桌面工作台（Chrome 隔离宿主）：已实测打开测试客户端导入的原片、输入入出点、提交提案。项目持久化了半开区间，仅生成 pending preview 审批，未创建 Job。增加批准按钮后，真实点击未创建 Job；已观察到点击落在页面而不是按钮，尚未区分滚动、遮挡或驱动定位。用例已增加受信点击目标、控件矩形、视口及滚动容器诊断；本轮定向 Vitest 被执行权限拦截，没有新的浏览器结果。server 与插件 typecheck、两个改动文件 lint 均通过；server `npm run build` 通过，产出的 `builtin-plugins/video-editor/client/edit-desk.tsx` 与源码逐字节一致。不是 Electron 或安装包验收。
+- 内置工作台发现：先前只把插件目录复制进 server 产物，生产 `builtinPlugins` 未列入 `video-editor`，测试宿主直接编译客户端入口掩盖了缺口。现已注册内置 ID 并提供必需的服务端入口，不重复注册视频 RPC。定向 `plugins/builtin/index.test.ts` 的真实回环 daemon 目录用例通过（1 passed、4 skipped）：禁用用户插件、无目录安装，客户端仍收到非空的 `video-editor` bundle，用户插件列表为空。Chrome 宿主改为从 daemon 目录获取 bundle 并校验 hash，不再直接编译客户端文件。目录通过不等于 Electron/Chrome 已显示界面；本次 lint 被拦截，未重启主 daemon。
+- 拒绝预览：工作台展示操作数及审批摘要，拒绝分支仅发送 `decision=reject`，重新读取项目后展示已拒绝的方案，不调用创建 Job。新增 `store.test.ts` 覆盖重开 SQLite 后重放同一拒绝、无 grant、无 Job、迟到批准被拒且快照不再变化；Chrome 用例也增加了独立拒绝路径。定向 store 用例在启动前被权限模式拦截，没有本轮行为通过记录。
+- Job 取消：旧版生产 JS 的临时 SQLite 探针复现了等待审片时取消不一致：首次及重放的 seq 都为 8，重开后行状态是 `cancelled`，唯一事件却是 `cancel_requested`。现将无 Worker 的取消终态、事件、outbox 与命令回执放入同一事务；监督器只对首次应用的命令 abort/enqueue。`job-events.test.ts` 改为检查事件 payload、命令响应及同请求重放后的事件全量；`job-supervisor.test.ts` 新增重复 retry 不启动第二个 Worker 的用例。修订后 server typecheck 通过一次，lint 报出的两个遮蔽变量已重命名；最终 lint/typecheck 复查和两个单文件行为用例被权限模式拦截。尚未据此关闭缺陷，未实测强杀或迁移旧事件。
+- 工作台选片导入（实现已写，未通过界面验收）：web 工作台分为“选择本机视频”和“导入所选视频”两步，单文件上限 64 MiB；上传使用原片及分块 SHA-256，只发送字节，不传本机路径。工作台保留当前选择时，重试从 daemon 已确认的偏移继续；提交回包丢失时重放同一提交。`writeUploadChunkRpc.input` 修正为真实的二进制帧，帧内 JSON 头与线上协议不变。`upload.test.ts` 增加分别丢失写块确认和提交回包的用例；FFmpeg 独立生成的测试原片为 386956 字节、H.264 + PCM，跨越 262144 字节边界。本轮导入集成用例和插件 typecheck 均在执行前被拦截，没有通过记录。浏览器用例拆分为空项目从界面导入、预置素材后审批两项，不能用后者替前者验收。早先生产构建不包含这次导入改动。
+- 选片取消审查：旧实现等待隐藏文件控件的 `change`，当用户取消且没有 `change` 时，`perform` 不会释放工作台忙锁。现用工作台自身的可见文件控件，仅选择文件不会调用 RPC，也不持有忙锁；只有点击“导入所选视频”才开始传输。Chrome 导入用例增加了选中后、提交前项目素材仍为空且 revision 不变的断言。本次 lint 未获执行；尚无真浏览器取消文件框或本次导入用例通过的证据。
+- 候选文件短读：旧 CAS 分块读取忽略 Node 的 `bytesRead`，提前 EOF 可能返回补零字节。独立 Node 临时文件对照实际请求两字节，只读到一字节，缓冲区为 `6500`，下次读取返回零。现按实际读取量推进，未到声明区间末端却遇到 EOF 时抛 `ARTIFACT_HASH_MISMATCH`。新增 `cas.test.ts` 分别检查合法的最后短块和磁盘文件截断；定向用例在执行前被拦截，Node 对照不代替产品测试。
+- 工作台审片（待实机）：已接入源素材无声代理与等待审阅的 preview 候选播放器。原有分块读取接口对 `:candidate` 逐次校验项目、Job 类型/状态、候选 revision 和 artifact 身份，不读取 final 候选。播放器限定 64 MiB MP4，匹配分块偏移、长度、revision、分块哈希和整片哈希后才创建本机播放 URL，关闭时释放。新增 `review-bytes.test.ts` 的两块成功样本和三种损坏/错版样本；daemon 用例覆盖 final 候选不能从预览路径读取，Chrome 用例检查候选解码元数据 640×360、1280 ms、final 审批仍待定。新增分块单测和 lint 未获执行，没有新的浏览器/daemon 实测结果，不能据此称审片已验收。
+- [ ] 手机与 relay 上的 viewer/operator 授权、取消/暂停终态事件和 daemon/Worker 故障矩阵。
+- W2 Pi 本地探针：在独立进程加载 `fcc33744` 的真实 SDK 源码，未使用 `pi/` 里与源码不一致的历史 dist。依赖装在 `references/pi-sdk-probe`，模型目录数据按该提交的 SHA-256 pin 验证；原 `pi/` 工作树干净。`scripts/check-video-planner.mjs` 实测启动及 reload 后 active/callable/all 三组工具均仅有 5 个视频工具，项目上下文标记未进入 prompt，经 IPC 从真实 daemon 领域服务取得 SQLite 项目快照。未调用模型、未实测 OS 级沙箱。
+- `tool-broker.test.ts` 在真实 SQLite/CAS 上通过：拒绝跨项目、身份注入、通用命令及审批/创建 Job；校验不落库，重复提交只形成一个 proposed plan 和一个 pending 审批，Jobs 为空。当前 schema 已增加到 40 个定义，生成一致性、14 条 Python fixtures、server 构建/typecheck 和本轮 lint 均通过。
+- 成品渲染审批（未通过界面验收）：工作台在对应预览候选旁展示版本、内容哈希及单独的“批准渲染成品候选”。按钮核对审批、授权与项目绑定，仅创建 final Job，不发送 export 决策。Chrome 用例新增播放后 final 仍 pending、单独点击后 final 等待交付审批且 export 仍 pending 的断言。内置插件和 server typecheck 通过；本轮 Chrome 用例及两文件 lint 在启动前被权限模式拦截。未验收成品审片或导出下载界面。
+- Linux 桌面打包核查：实际主入口 `packages/desktop/dist/main.js` 和 renderer `packages/app/dist/index.html` 均不存在，根 `node_modules/electron/dist/electron` 也未找到。server dist 的生产注册表含 `video-editor`，外置插件输入存在，但本次工作台改动后 `client/edit-desk.tsx` 的源码与 dist 副本已不同。主进程编译及插件双 bundle 对照均未获执行；没有创建安装包或启动桌面窗口。
+- 已交付文件的工作台下载（未实机验收）：仅完成的 export Job 显示成品及清单入口。点击准备后按 artifact revision 读取，分别限定 MP4 / JSON 和 64 MiB，逐块及整片 SHA-256 校验后提供保存链接；关闭时撤销 Blob URL。此路径不批准导出，也不读取未交付的 final 候选。本轮内置插件 typecheck 通过；新增的两个交付读取用例及相关 lint 在启动前被拦截。尚无 Chrome/Electron 将文件保存到磁盘的结果。
+- 候选音轨 QA：独立生成并全片解码三个 1 秒、两路流的真实 MP4（正常 AAC 48 kHz、第二视频流替代音轨、AAC 44.1 kHz）。三者均满足旧版流数量、视频尺寸和精确时间检查。`video/media.ts` 的候选检查新增对照源音轨数、已知声道数及 AAC/48 kHz 编码要求。`editor.e2e.test.ts` 添加实际媒体对照；两文件 lint 0 警告/错误。本轮 Vitest 及 server typecheck 在启动前被拦截，未据此认定新版生产 QA 已通过。
+- 解码阶段的任务控制：源码审查发现旧 `decodeAll` 将 FFmpeg 的所有错误转为 `ok:false`，调用方再统一报 `QA_FAILED`，丢掉暂停/取消依赖的 `CANCELLED`。现从 CAS 引用启动全片解码，保留真实错误类型，已取消的任务在启动子进程前退出。新增 `job-supervisor.test.ts` 用例区分坏文件、预先取消和解码中的暂停/取消；定向 Vitest 和本次 lint 均在启动前被拦截，尚无修订后状态行为通过记录。本轮还尝试在独立临时目录仅导出离线 Electron renderer；权限模式在 Expo 启动前拦截，未生成可验收的页面。
+- 局部编辑的编码前保护区合成：已核对固定版 VACE 的白色生成/黑色保留语义及其二值化代码。`worker/protected_composite.py` 在同尺寸、已对齐的 RGB24 工作帧上使用独立批准区域和 8 位羽化权重；非零权重越出批准区域即拒绝。`python3 -I scripts/check_protected_composite.py` 实跑通过：4 帧中故意让候选改变每个像素，2592 个保护像素逐通道与源一致，完全编辑区和 128/255 羽化边缘符合独立计算，无损 FFV1 全片回读一致且源 hash 未变；尺寸错误及越界权重负例均被拒。同参数 H.264/yuv420p 基线对照也已实测：此样片保护区解码后的 RGB 通道绝对差均值 5.131/255，最大 221/255；没有用这个样片设定通用画质阈值。以上不含 SAM2/VACE 推理、色彩转换或 daemon 调度。
+- 源帧到模型工作帧的时间映射：`worker/sampling_map.py` 根据源 PTS、duration 和有理数时基按半开区间采样；v2 索引读取入口校验索引字节摘要、源 hash、流和帧范围。`python3 -I scripts/check_sampling_map.py` 实跑通过：2 s 起点、8 个 VFR 帧得到 9 个 25 Hz 样本，源序号 1 采样两次；FFV1 工作副本的逐帧 PTS、时长和全片 RGB 回读一致。重复采样结果不能隐式绑回源轴；丢帧、偏移一 tick、尾帧时长错误、源帧间隙及索引绑定错误均被拒。1:1 对照保留超过 2^53 的相邻源 tick。v2 索引样本由实测 ffprobe 结果构造，未通过 daemon 提交 Job、调用模型或导出 VFR 成品。
+- VFR 成品的 daemon 验收用例：`editor.e2e.test.ts` 在原有上传、三次独立审批和成品分块下载流程上增加 VFR 样片。校验源索引、预览及下载成品的每个视频 PTS，而不仅是帧数/总时长。独立 FFmpeg 对照实测：25 Hz 网格删去序号 5 后，1 s 半开裁剪的 preview/final 均保留 24 帧，0.160 s 后下一帧是 0.240 s；两条编码路径时长均为 1 s。本轮 server typecheck 和定向 lint 通过，VFR 定向 Vitest 在启动前被权限模式拦截，未观察到实际 daemon 交付这份样片。
+- 成品审片与交付：工作台可请求由 final 候选派生的 640×360 代理，导出审批记录绑定候选哈希、代理和 QA；播放不交付，用户需单独批准。新增 Chrome 下载回读、成品 hash 与解码断言。五文件 lint 已通过；本轮 Chrome 和类型检查在启动前被策略拦截，未观察到最终界面验收。
+- [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
+
+## 环境与错误
+
+| 问题 | 处理 |
+| --- | --- |
+| 首次 `npm ci` 在根会话目录执行，因无 lockfile 失败 | 改用 `npm --prefix vendor/paseo ci`，已安装成功；未生成根依赖文件 |
+| SAM2/VACE/PySceneDetect 的 blob:none 检出多次遇到 HTTP/2 EOF | 保留原检出；使用固定 commit 源码归档逐 blob 核对 Git 对象后，在 `references/sam2-verified`（`2b90b9f5`，569 项）和 `references/pyscenedetect-verified`（`a696070d`，220 项）恢复独立工作树。两者状态干净，已禁止联网验证 `git archive HEAD`；结论仅限固定提交，不涵盖全部历史对象或运行时。已读 ContentDetector 的相邻帧加权打分与 AdaptiveDetector 的延迟返回逻辑；切点应使用返回的目标时码，不能使用回调当前帧。 |
+| FilmCraft 固定提交的源码与构建 | 原只读克隆 `ba6fe105` 的 1263 个唯一 blob 在离线审计时缺 947 个。已从同一提交的公开归档恢复 `references/filmcraft-verified/`，逐路径核对 Git blob ID 与可执行位，独立读回复验 1265 个文件，无缺失或额外文件。归档 SHA-256 `7d46e64cd6df247deb4c592403852ef2367ed5a4192aba0de8a0b1789e8a7883`。这是完整源码快照，不含 Git 历史；原克隆未改动。Cargo.lock 的整个工作区含 826 个包，745 个 registry 条目有校验和，另外有 4 个 Git 来源/修订组合；不是 CLI 实际链接组件清单。隔离执行 `cargo build --locked -p filmcraft-cli --no-default-features` 在启动前被权限模式拦截，无 CLI 二进制或媒体符合性验收。 |
+| Android SDK、Xvfb、系统签名工具未预装 | 后续在隔离目录安装并实测；Linux/浏览器结果不替代 Android/Windows/macOS 验收 |

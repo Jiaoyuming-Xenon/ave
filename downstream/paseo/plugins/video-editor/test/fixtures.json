@@ -1,0 +1,112 @@
+[
+  {
+    "name": "exact signed PTS",
+    "schema": "Rational",
+    "valid": true,
+    "value": { "num": "-9007199254740993", "den": "90000" }
+  },
+  {
+    "name": "zero denominator",
+    "schema": "Rational",
+    "valid": false,
+    "value": { "num": "1", "den": "0" }
+  },
+  {
+    "name": "no floating seconds",
+    "schema": "TimeRange",
+    "valid": false,
+    "value": { "start": 0.25, "duration": { "num": "1", "den": "2" } }
+  },
+  {
+    "name": "integer ordering is not a JSON number",
+    "schema": "EventsRequest",
+    "valid": false,
+    "value": { "projectId": "p", "afterSeq": 1 }
+  },
+  {
+    "name": "large reconnect cursor",
+    "schema": "EventsRequest",
+    "valid": true,
+    "value": { "projectId": "p", "afterSeq": "9007199254740993" }
+  },
+  {
+    "name": "command cannot supply role",
+    "schema": "ProjectRequest",
+    "valid": false,
+    "value": { "projectId": "p", "role": "owner" }
+  },
+  {
+    "name": "empty title after trimming",
+    "schema": "CreateProjectInput",
+    "valid": false,
+    "value": { "requestId": "r1", "title": "    " }
+  },
+  {
+    "name": "unicode title",
+    "schema": "CreateProjectInput",
+    "valid": true,
+    "value": { "requestId": "r2", "title": "  三轨剪辑  " }
+  },
+  {
+    "name": "legacy job without candidate lineage",
+    "schema": "JobSnapshot",
+    "valid": true,
+    "value": {
+      "jobId": "j",
+      "projectId": "p",
+      "revision": "0",
+      "planHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "kind": "preview",
+      "state": "awaiting_review",
+      "artifacts": []
+    }
+  },
+  {
+    "name": "final job with parent lineage",
+    "schema": "JobSnapshot",
+    "valid": true,
+    "value": {
+      "jobId": "j2",
+      "projectId": "p",
+      "revision": "1",
+      "approvalId": "review-1",
+      "candidateRevision": "15",
+      "parentRevision": "11",
+      "planHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "kind": "final",
+      "state": "rendering_final",
+      "artifacts": []
+    }
+  },
+  {
+    "name": "invalid approval decision",
+    "schema": "ApprovalDecision",
+    "valid": false,
+    "value": { "requestId": "r", "approvalId": "a", "expectedRevision": "1", "decision": "auto" }
+  },
+  {
+    "name": "range read cannot request zero bytes",
+    "schema": "ReadAssetChunkRequest",
+    "valid": false,
+    "value": { "projectId": "p", "assetId": "a", "revision": "1", "offset": "0", "length": "0" }
+  },
+  {
+    "name": "valid upload declaration",
+    "schema": "CreateUploadRequest",
+    "valid": true,
+    "value": {
+      "requestId": "r",
+      "projectId": "p",
+      "displayName": "clip.mp4",
+      "expectedSize": "100",
+      "expectedSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "mediaType": "video/mp4"
+    }
+  },
+  {
+    "name": "sha256 must be complete",
+    "schema": "BlobRef",
+    "valid": false,
+    "value": { "sha256": "0123", "bytes": "3", "mediaType": "video/mp4" }
+  }
+]

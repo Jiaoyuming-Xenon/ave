@@ -1,8 +1,22 @@
-# Agentic Video Editor
+# ave — Agentic Video Editor
 
 本地优先、跨平台的 Agent 视频编辑工作台设计。桌面端完成导入、编辑、生成、预览和导出；Android 连接同一桌面 daemon，负责远程会话、审批、监控和交付。
 
-> 当前仓库是**经过调研的产品/技术设计与工程工作流基线**，不是已实现的应用。没有 GUI、APK、安装包、视频模型效果或跨平台构建已通过验收的声明。原始需求保存在 [`research/demo.original.md`](research/demo.original.md)。
+> 当前是部分实现，未完成整机或安装包交付。已实际运行的用例和未验证范围见 [`implementation-progress.md`](implementation-progress.md)。原始需求见 [`research/demo.original.md`](research/demo.original.md)。
+
+## 恢复实现工作树
+
+根仓库的 `downstream/paseo/` 收录相对锁定上游的全部新增和修改文件，不是指向本机提交的 gitlink。在全新克隆的根目录中执行以下命令；已有开发工作树时不要覆盖：
+
+```bash
+test ! -e vendor/paseo && (
+  git clone --no-checkout https://github.com/getpaseo/paseo.git vendor/paseo &&
+  git -C vendor/paseo checkout --detach c626bf37071491981fc8e11c3e2f4df093381d37 &&
+  cp -R downstream/paseo/. vendor/paseo/
+)
+```
+
+上游许可证随覆盖目录保留。依赖、参考检出、素材、权重和安装包不入库。
 
 ## 文档入口
 
