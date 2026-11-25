@@ -68,6 +68,7 @@
 - 发现（已核查，未改行为）：`outbox` 表在全仓库（ripgrep 所有 packages/*.ts）仅 `store.ts` 引用，且只有 `emit()` 的 INSERT 与建表，无任何 SELECT/DELETE/消费方。它与 `events` 表逐行重复（同 event_id/project_id/seq/document），而 `get_events` 读的是 `events`，故 outbox 当前是只写、无界增长的冗余表（疑似为 relay 推送预留但未接线）。建议 owner 要么接上消费方并按消费游标清理，要么设定保留窗口定期 prune；因保留策略属设计决策、且无消费游标可依据，本轮不臆测删数据以免丢失未来消费方所需事件。
 - TS 测试真实验收（已运行通过，修正先前“未运行”状态）：本机 npm ci 因 better-sqlite3 原生编译反复 OOM，但视频内核实际用 node:sqlite（Node≥22.19 内置）而非 better-sqlite3。遂在独立目录装 vitest 2.1.9＋zod 4.4.3（匹配仓库 ^4.4.3），以最小配置（alias `#video-editor/contracts/v1`、`#video-editor/bytes`，node:sqlite 经 createRequire shim 外部化）真实运行 9 个测试文件——access(3)、authorization(9)、store(6)、job-supervisor(9)、job-recovery(1)、job-events(1)、media-failure(3)、upload(3)、cut(4)，合计 **39 测试全部通过**。期间真实执行还纠正了一处本人测试断言错误（revoke_device 属 MANAGE_METHODS，operator 调用先触发 owner-only 消息）。前述各功能/测试块的“未运行 Vitest”就此 9 文件而言已改为已运行通过；e2e（editor.e2e/edit-desk.browser.e2e）依赖完整 daemon/protocol/agent-sdk 依赖树，仍未运行。
 - RPC 能力测试（已运行通过）：新增 `rpc.test.ts`，经 `EditorService.create/start` 真实调用 `editor.rpc.invoke`——断言 `get_capabilities` 含 device-channel/list-projects，`list_projects` 初始为空、create_project 后返回该项目。本机 vitest 真实运行通过（累计 40 项 TS 测试绿）。e2e 全链路另阻塞于 protocol 生成的 AOT 校验产物（ws-outbound.aot.js 等，需完整 codegen/build，本机 OOM），仍未运行。
+- CAS 边界测试（已运行通过）：`cas.test.ts` 增「内容寻址写入/相同内容去重/篡改检测」与「JSON artifact 往返」两用例——writeBytes 返回正确 sha256/bytes、readBytes 往返一致、相同内容 pathFor 相同、篡改后 readBytes 抛 ARTIFACT_HASH_MISMATCH、writeJson mediaType 与解析往返。本机 vitest 真实运行 3 项全过（累计 42 项 TS 测试绿）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
