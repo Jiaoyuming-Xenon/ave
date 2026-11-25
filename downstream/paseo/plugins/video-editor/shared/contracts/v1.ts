@@ -684,6 +684,25 @@ export const contactSheetRpc = {
   input: ContactSheetRequestSchema,
   output: ContactSheetResultSchema,
 };
+
+export const PreviewFramesRequestSchema = z
+  .object({
+    requestId,
+    projectId: id,
+    jobId: id,
+    maxTiles: z
+      .string()
+      .regex(/^(0|[1-9][0-9]{0,2})$/)
+      .optional(),
+  })
+  .strict();
+export type PreviewFramesRequest = z.infer<typeof PreviewFramesRequestSchema>;
+
+export const previewFramesRpc = {
+  name: "video.v1.preview_frames",
+  input: PreviewFramesRequestSchema,
+  output: ContactSheetResultSchema,
+};
 export const getPlanningRunRpc = {
   name: "video.v1.get_planning_run",
   input: PlanningRunRequestSchema,

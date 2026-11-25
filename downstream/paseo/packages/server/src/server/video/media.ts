@@ -497,6 +497,67 @@ export class MediaService {
   }
 
   /**
+   * Bounded storyboard for a rendered candidate (preview/final job): frames are
+   * time-sampled at a fixed rate and tiled into one JPEG in CAS, cited by hash
+   * only. Deterministic: same candidate bytes + tile budget => same sheet.
+   */
+  async previewFrames(
+    projectId: string,
+    jobId: string,
+    maxTiles: number,
+    principal: EditorPrincipal,
+    signal: AbortSignal,
+  ): Promise<ContactSheetResult> {
+    const job = this.store.job(projectId, jobId, principal);
+    const candidate = job.artifacts.find((a) => a.kind === "candidate");
+    if (!candidate) editorFailure("ASSET_NOT_FOUND", "The job has no rendered candidate yet");
+    const sourcePath = this.cas.pathFor(candidate.blob);
+    if ((await sha256File(sourcePath)) !== candidate.blob.sha256)
+      editorFailure("ARTIFACT_HASH_MISMATCH", "Candidate bytes changed before storyboard");
+    const probed = await this.probe(sourcePath);
+    const video = probed.document.streams.find((s) => s.codec_type === "video");
+    if (!video) editorFailure("CAPABILITY_UNAVAILABLE", "The candidate has no video stream");
+    const durationSec = Number(probed.document.format.duration ?? "0");
+    if (!(durationSec > 0)) editorFailure("CAPABILITY_UNAVAILABLE", "The candidate has no measurable duration");
+    const tiles = Math.max(1, Math.min(maxTiles, 36, Math.floor(durationSec)));
+    const fps = tiles / durationSec;
+    const columns = Math.ceil(Math.sqrt(tiles));
+    const rows = Math.ceil(tiles / columns);
+    const tileW = 320;
+    const tileH = Math.max(1, Math.round((tileW * (video.height ?? 180)) / (video.width ?? 320)));
+    const directory = await mkdtemp(path.join(tmpdir(), "video-frames-"));
+    try {
+      const output = path.join(directory, "frames.jpg");
+      await this.spawnChecked(this.tools.ffmpeg, [
+        "-nostdin", "-v", "error", "-xerror", "-i", sourcePath,
+        "-vf", `fps=${fps.toFixed(6)},scale=${tileW}:${tileH}:force_original_aspect_ratio=decrease,pad=${tileW}:${tileH}:(ow-iw)/2:(oh-ih)/2,setsar=1,tile=${columns}x${rows}`,
+        "-frames:v", "1", "-q:v", "4", output,
+      ], signal);
+      const blob = await this.cas.importFile(output, "image/jpeg");
+      const img = (await this.probe(this.cas.pathFor(blob))).document.streams.find((s) => s.codec_type === "video");
+      if (!img || img.width !== columns * tileW || img.height !== rows * tileH)
+        editorFailure("QA_FAILED", "Storyboard geometry differs from the requested grid");
+      const tileSourceSeconds: string[] = [];
+      for (let i = 0; i < tiles; i++) tileSourceSeconds.push(((i + 0.5) / fps).toFixed(6));
+      return {
+        artifactId: `contact:${jobId}:${blob.sha256.slice(0, 16)}`,
+        projectId,
+        assetId: candidate.artifactId,
+        sourceSha256: candidate.blob.sha256,
+        columns,
+        rows,
+        tiles,
+        tileWidth: tileW,
+        tileHeight: tileH,
+        tileSourceSeconds,
+        blob,
+      };
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }
+
+  /**
    * Generate a bounded contact sheet (tiled JPEG) for one asset into CAS and
    * return bounded metadata. Tiles are sampled evenly in source time from the
    * presentation index; the image itself stays in CAS and is cited by hash.

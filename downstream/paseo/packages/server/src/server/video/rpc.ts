@@ -13,6 +13,7 @@ import {
   SteerPlanningRunInputSchema,
   AnalyzeAssetInputSchema,
   ContactSheetRequestSchema,
+  PreviewFramesRequestSchema,
   type EditorPrincipal,
 } from "#video-editor/contracts/v1";
 import { decodeFramedChunk } from "#video-editor/bytes";
@@ -130,6 +131,16 @@ export class EditorRpcService {
         return this.editor.media.contactSheet(
           request.projectId,
           request.assetId,
+          request.maxTiles ? Number(request.maxTiles) : 12,
+          principal,
+          new AbortController().signal,
+        );
+      }
+      case "video.v1.preview_frames": {
+        const request = PreviewFramesRequestSchema.parse(input);
+        return this.editor.media.previewFrames(
+          request.projectId,
+          request.jobId,
           request.maxTiles ? Number(request.maxTiles) : 12,
           principal,
           new AbortController().signal,
