@@ -153,6 +153,52 @@ export class VideoToolBroker {
       }
       case "get_scene_cuts":
         return this.store.sceneCuts(projectId, call.args.assetId, principal);
+      case "diff_plans": {
+        if (call.args.draft.projectId !== projectId)
+          editorFailure("PERMISSION_DENIED", "The draft belongs to another project");
+        const plan = this.store
+          .project(projectId, principal)
+          .plans.find((p) => p.planId === call.args.planId);
+        if (!plan) editorFailure("ASSET_NOT_FOUND", "No such plan in the bound project");
+        const draft = call.args.draft;
+        const kinds = [
+          "trimOperations",
+          "transformOperations",
+          "audioOperations",
+          "transitionOperations",
+          "subtitleOperations",
+        ] as const;
+        const result: Record<string, unknown> = {
+          planId: plan.planId,
+          planHash: plan.planHash,
+          intentChanged: draft.intent !== plan.intent,
+        };
+        for (const kind of kinds) {
+          const before = new Map((plan[kind] as Array<Record<string, unknown>>).map((o) => [o.opId as string, o]));
+          const after = new Map((draft[kind] as Array<Record<string, unknown>>).map((o) => [o.opId as string, o]));
+          const added: string[] = [];
+          const removed: string[] = [];
+          const changed: Array<{ opId: string; fields: string[] }> = [];
+          for (const [opId, op] of after) {
+            const old = before.get(opId);
+            if (!old) {
+              added.push(opId);
+              continue;
+            }
+            const fields: string[] = [];
+            for (const k of new Set([...Object.keys(old), ...Object.keys(op)]))
+              if (JSON.stringify(old[k]) !== JSON.stringify(op[k])) fields.push(k);
+            if (fields.length) changed.push({ opId, fields: fields.slice(0, 12) });
+          }
+          for (const opId of before.keys()) if (!after.has(opId)) removed.push(opId);
+          result[kind] = {
+            added: added.slice(0, 64),
+            removed: removed.slice(0, 64),
+            changed: changed.slice(0, 64),
+          };
+        }
+        return result;
+      }
       case "get_planning_run": {
         const lifecycle = this.store.runLifecycle(projectId, principal);
         const current = lifecycle.find((r) => r.runId === runId);

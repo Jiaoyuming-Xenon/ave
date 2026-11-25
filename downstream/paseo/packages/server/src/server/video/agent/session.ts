@@ -47,6 +47,8 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
     "Frame-aligned scene-cut suggestions for one asset from the deterministic FFmpeg scene-score pass (bounded list, no pixels).",
   get_planning_run:
     "Read-only lifecycle state and recent persisted events of this planning run (no worker internals).",
+  diff_plans:
+    "Field-level diff between an accepted plan (planId) and a candidate draft before submitting. Read-only.",
 };
 
 /**

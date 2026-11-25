@@ -97,6 +97,7 @@
 - 已实现渲染配方哈希与规划运行自查（2026-11-25）：render() 返回 renderRecipeHash（完整 ffmpeg argv、临时/输出路径脱敏后的 SHA-256），写入 QA 报告与 export manifest（renderRecipeHash/planHash 可溯源）；新增 planner 工具 get_planning_run（第 11 个，只读查看本 run 的持久化事件与状态，事件有界 16 条/500 字）。wire 14/14、esbuild 全绿。未跑真模型/e2e。
 - 已实现确定性音频波形（2026-11-25）：analysis job 新增 waveform artifact（首条音频流解码为 8kHz mono PCM，上限 120s，每 100ms 一个 RMS 桶，≤1200 桶，video.waveform/v1），rpc 支持 :waveform、get_analysis 返回摘要，客户端“分析切点/波形”按钮同时拉取并以块字符渲染波形、切点点击写入入点。本地 3s 正弦音实测 30 桶 RMS≈0.088 稳定，wire 14/14、profile 20/20、esbuild 全绿。未跑真模型/e2e。
 - 已实现方案卡时间线可视化（2026-11-25）：客户端已提议方案卡按 v1/v2 分轨渲染等宽比例片段条（flexGrow=片段时长，标注 clipId 与源入点），esbuild 全绿。未跑真模型/e2e。
+- 已实现 diff_plans planner 工具（2026-11-25，第 12 个）：按 opId 对已采纳 plan 与候选草稿做新增/删除/字段级变更对比（每类上限 64 条、字段上限 12 个），提交前可迭代修改；本地算法单测（t1 变更 sourceRange、t2 新增、x1 删除）符合预期，wire 14/14、esbuild 全绿。未跑真模型/e2e。
 ## 环境与错误
 
 | 问题 | 处理 |
