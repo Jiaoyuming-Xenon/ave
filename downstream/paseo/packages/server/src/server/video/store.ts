@@ -6,6 +6,8 @@ import { DatabaseSync } from "./sqlite.js";
 import { assertRenderablePreview } from "./preview-profile.js";
 import { sha256Json, type ContentAddressedStore } from "./cas.js";
 import {
+  BlobRefSchema,
+  type BlobRef,
   AcceptedEditPlanSchema,
   ApprovalGrantSchema,
   ApprovalRequestSchema,
@@ -104,6 +106,13 @@ CREATE TABLE IF NOT EXISTS jobs (
   document TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1
 );
 CREATE UNIQUE INDEX IF NOT EXISTS active_job_semantics ON jobs(project_id, plan_hash, revision, kind) WHERE active = 1;
+CREATE TABLE IF NOT EXISTS constant_rate_streams (
+  index_sha TEXT NOT NULL, stream_uid TEXT NOT NULL, PRIMARY KEY(index_sha, stream_uid)
+);
+CREATE TABLE IF NOT EXISTS contact_sheets (
+  project_id TEXT NOT NULL REFERENCES projects(project_id), revision TEXT NOT NULL,
+  artifact_id TEXT NOT NULL, blob TEXT NOT NULL, PRIMARY KEY(project_id, revision, artifact_id)
+);
 CREATE TABLE IF NOT EXISTS artifacts (
   artifact_id TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES jobs(job_id), document TEXT NOT NULL
 );
@@ -128,6 +137,8 @@ CREATE TABLE IF NOT EXISTS upload_chunks (
   upload_id TEXT NOT NULL, offset TEXT NOT NULL, chunk_sha256 TEXT NOT NULL,
   PRIMARY KEY(upload_id, offset)
 );
+-- Device project discovery joins grants by principal; the composite PK leads with project_id.
+CREATE INDEX IF NOT EXISTS idx_project_grants_principal ON project_grants(principal_id);
 `;
 
 export class EditorStore {
@@ -223,6 +234,30 @@ export class EditorStore {
     return { projectId, title, revision };
   }
 
+  /** Projects the principal may open: all for the owner, only scoped grants for a paired device. */
+  listProjects(principal: EditorPrincipal): Array<{ projectId: string; title: string; revision: string }> {
+    type Row = { project_id: string; title: string; revision: string };
+    const summarize = (row: Row) => ({
+      projectId: row.project_id,
+      title: row.title,
+      revision: row.revision,
+    });
+    if (principal.role === "owner" && principal.projectIds === null) {
+      const rows = this.database
+        .prepare("SELECT project_id, title, revision FROM projects ORDER BY created_at, project_id")
+        .all() as Row[];
+      return rows.map(summarize);
+    }
+    const rows = this.database
+      .prepare(
+        "SELECT p.project_id, p.title, p.revision FROM projects p JOIN project_grants g ON g.project_id = p.project_id WHERE g.principal_id = ? ORDER BY p.created_at, p.project_id",
+      )
+      .all(principal.principalId) as Row[];
+    return rows
+      .filter((row) => principal.projectIds === null || principal.projectIds.includes(row.project_id))
+      .map(summarize);
+  }
+
   project(projectId: string, principal: EditorPrincipal): ProjectSnapshot {
     this.authorize(projectId, principal, "viewer");
     const row = this.projectRow(projectId);
@@ -304,6 +339,32 @@ export class EditorStore {
         "The asset revision has changed; download a fresh snapshot",
       );
     return asset;
+  }
+
+  recordConstantRateStream(indexSha: string, streamUid: string): void {
+    this.database.prepare("INSERT OR IGNORE INTO constant_rate_streams VALUES (?, ?)").run(indexSha, streamUid);
+  }
+
+  private hasConstantRate(indexSha: string, streamUid: string): boolean {
+    return Boolean(this.database.prepare("SELECT 1 FROM constant_rate_streams WHERE index_sha = ? AND stream_uid = ?").get(indexSha, streamUid));
+  }
+
+  registerContactSheet(projectId: string, revision: string, assetId: string, blob: BlobRef, principal: EditorPrincipal): string {
+    this.authorize(projectId, principal, "operator");
+    this.asset(projectId, assetId, revision, principal);
+    const id = `contact:${sha256Json([assetId, blob.sha256])}`;
+    this.database.prepare("INSERT OR IGNORE INTO contact_sheets(project_id, revision, artifact_id, blob) VALUES (?, ?, ?, ?)")
+      .run(projectId, revision, id, JSON.stringify(blob));
+    return id;
+  }
+
+  contactSheetBlob(projectId: string, revision: string, id: string, principal: EditorPrincipal): BlobRef {
+    this.authorize(projectId, principal, "viewer");
+    if (this.projectRow(projectId).revision !== revision)
+      editorFailure("REVISION_CONFLICT", "Download a fresh project snapshot");
+    const [document] = this.rows("SELECT blob FROM contact_sheets WHERE project_id = ? AND revision = ? AND artifact_id = ?", projectId, revision, id);
+    if (!document) editorFailure("ASSET_NOT_FOUND", "No such contact sheet in this project revision");
+    return BlobRefSchema.parse(JSON.parse(document));
   }
 
   artifact(
@@ -1169,7 +1230,7 @@ export class EditorStore {
       const videoStream = asset.streams.find(
         (stream) => stream.streamUid === operation.source.streamUid && stream.kind === "video",
       );
-      if (videoStream?.averageRate) {
+      if (videoStream?.averageRate && this.hasConstantRate(asset.presentationIndex.sha256, videoStream.streamUid)) {
         const rate = videoStream.averageRate;
         const dur = operation.recordRange.duration;
         if ((BigInt(dur.num) * BigInt(rate.num)) % (BigInt(dur.den) * BigInt(rate.den)) !== 0n)
@@ -1422,6 +1483,14 @@ export class EditorStore {
       this.database
         .prepare("UPDATE jobs SET document = ?, active = 0 WHERE job_id = ?")
         .run(JSON.stringify(recovered), job.jobId);
+      // Recovery bypasses updateJob's worker path, so emit the terminal event explicitly:
+      // remote viewers/operators reconciling via get_events must see the restart failure,
+      // not a job stuck forever in its last rendering state.
+      this.emit(job.projectId, "job.state.changed", {
+        jobId: job.jobId,
+        state: recovered.state,
+        phaseDetail: recovered.phaseDetail,
+      });
     }
   }
 

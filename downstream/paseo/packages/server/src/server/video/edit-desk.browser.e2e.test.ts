@@ -169,6 +169,10 @@ test
           displayName: "clip.mp4",
           original: { sha256: digest, bytes: String(bytes.length) },
         });
+        await web("find", "role", "button", "click", "--name", "生成联系表");
+        await web("wait", "--text", "查看联系表");
+        await web("find", "role", "button", "click", "--name", "查看联系表");
+        await web("wait", "--fn", `document.querySelector('img[alt^="contact sheet"]')?.naturalWidth > 0`);
         expect(imported.jobs).toHaveLength(0);
         expect(imported.approvals).toHaveLength(0);
         return;

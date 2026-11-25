@@ -98,16 +98,6 @@ function waveformBucket(samples: Int16Array, offset: number, length: number): st
   return Math.sqrt(sum / length).toFixed(4);
 }
 
-/** Snap a detected cut to the whole-frame grid of the source average rate (milliseconds). */
-function alignToFrameMs(stream: StreamDescriptor, frameIndex: number, ptsTime: string): Rational {
-  const rate = stream.averageRate;
-  if (!rate) return { num: String(Math.round(Number(ptsTime) * 1000)), den: "1" };
-  const frameMs = (Number(rate.den) * 1000) / Number(rate.num);
-  if (frameIndex >= 0 && Number.isFinite(frameMs) && frameMs > 0)
-    return { num: String(Math.round(frameIndex * frameMs)), den: "1" };
-  return { num: String(Math.round(Number(ptsTime) * 1000)), den: "1" };
-}
-
 export interface MediaTools {
   ffmpeg: string;
   ffprobe: string;
@@ -157,6 +147,17 @@ export class MediaService {
     const presentationIndex = await this.presentationIndex(original, probed.streams);
     const probe = await this.cas.writeJson(probed.document);
     const index = await this.cas.writeJson(presentationIndex);
+    // avg_frame_rate also exists for VFR streams. Only apply a frame grid if
+    // every indexed presentation timestamp advances by exactly one frame.
+    for (const stream of probed.streams) {
+      if (stream.kind !== "video" || !stream.averageRate) continue;
+      const frames = (presentationIndex.frames as Array<{ stream_index: number; pts?: string }>).filter(f => f.stream_index === stream.streamIndex);
+      const scale = BigInt(stream.timeBase.num) * BigInt(stream.averageRate.num);
+      const step = BigInt(stream.timeBase.den) * BigInt(stream.averageRate.den);
+      if (frames.length > 1 && frames.every((f, i) => f.pts !== undefined && (i === 0 ||
+        (BigInt(f.pts) - BigInt(frames[i - 1]!.pts!)) * scale === step)))
+        this.store.recordConstantRateStream(index.sha256, stream.streamUid);
+    }
     const proxy = await this.createProxy(source);
     return SourceAssetSchema.parse({
       assetId: input.assetId,
@@ -554,7 +555,7 @@ export class MediaService {
       if (!img || img.width !== columns * tileW || img.height !== rows * tileH)
         editorFailure("QA_FAILED", "Contact sheet geometry differs from the requested grid");
       return {
-        artifactId: `contact:${assetId}:${blob.sha256.slice(0, 16)}`,
+        artifactId: this.store.registerContactSheet(projectId, project.revision, assetId, blob, principal),
         projectId,
         assetId,
         sourceSha256: asset.original.sha256,
@@ -874,7 +875,7 @@ export class MediaService {
         if (score >= threshold && Number(ptsTime) - lastCut >= minGap) {
           candidateCount += 1;
           if (cuts.length < MediaService.SCENE_CUT_MAX_CUTS) {
-            cuts.push({ frameIndex, ptsTime, score: scoreText, aligned: alignToFrameMs(video, frameIndex, ptsTime) });
+            cuts.push({ frameIndex, ptsTime, score: scoreText, aligned: { num: String(Math.round(Number(ptsTime) * 1000)), den: "1" } });
             lastCut = Number(ptsTime);
           }
         }
@@ -905,7 +906,7 @@ export class MediaService {
   private async presentationIndex(
     original: BlobRef,
     streams: StreamDescriptor[],
-  ): Promise<unknown> {
+  ) {
     const { stdout } = await this.run(
       this.tools.ffprobe,
       [
@@ -1018,9 +1019,6 @@ export class MediaService {
     for (const op of ops) {
       if (!trackTarget.has(op.trackId)) trackTarget.set(op.trackId, segGeo[ops.indexOf(op)]!);
     }
-    const v1FirstIdx = Math.max(0, ops.findIndex((op) => op.trackId === "v1"));
-    const targetW = segGeo[v1FirstIdx]!.width;
-    const targetH = segGeo[v1FirstIdx]!.height;
     // One input per segment (each from its own asset); segments are trimmed in
     // source time, rebased to zero, normalized, then concatenated in record
     // order. Source PTS timing is preserved per segment (vfr).
