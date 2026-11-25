@@ -82,3 +82,11 @@
 
 - 修复前用真实 Pi SDK 子进程复现：收到 hello 后发送 SIGTERM，进程退出码 0，独立临时目录仍残留。修复后显式 dispose、父进程 stdin 关闭、SIGTERM 三种路径都观察到同一 PID 完成 hello 并退出，工作目录已清除。开发模式直接启动 Node，不再通过 npx 间接监督。
 - SQLite/控制器回归验证同请求回执相同、握手前停止不产生媒体 Job、重开数据库可将遗留运行标记 interrupted。真实视频与浏览器全量 11 文件、38/38 通过，server 类型检查通过。无 API 密钥、无真实模型请求，此记录不是自然语言生成剪辑方案的验收。
+
+## 2026-11-25 · 工作台源帧与 SAM2 点选
+
+工作台可按素材、视频流和显示序号查看源帧。daemon 校验源 SHA-256、索引摘要和 FFmpeg 解码的 PTS、时基与编码尺寸，返回带校验和的 JPEG。预览按编码像素坐标点选，界面允许追加前景点和背景点、清除后重读原图。
+
+在本地 RTX 5060 Laptop GPU 上，从 Chrome 经真实 WebSocket 和 daemon 在 320×192 视频上点选对象。单前景点选中已知矩形，追加背景点后显示 2 个点与 6,190 个前景像素；清除后的 JPEG 与点选前相同。源文件哈希保持不变。39 项服务端视频回归（含四个浏览器场景）、16 项契约样例及服务端与插件类型检查通过。
+
+部署单帧点选需为 daemon 设置绝对路径 `VIDEO_EDITOR_SAM2_PYTHON`（含 CUDA、PyTorch 和 SAM2 依赖）、`VIDEO_EDITOR_SAM2_SOURCE`（固定提交的干净 SAM2 checkout）与 `VIDEO_EDITOR_SAM2_WEIGHTS`（固定 Tiny 权重）。普通取帧仅需 FFmpeg。掩码预览随工作台状态保存于内存；持久化掩码版本、输入审批及从该版本调度 VACE 待接入。

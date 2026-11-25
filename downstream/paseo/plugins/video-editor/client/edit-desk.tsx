@@ -12,6 +12,7 @@ import {
   analyzeAssetRpc, contactSheetRpc,
   type ApprovalRequest, type BlobRef, type EditorEvent, type PlanningRunStatus, type ProjectSnapshot,
 } from "../shared/contracts/v1.js";
+import { FrameInspector } from "./frame-inspector.js";
 import { ReviewPlayer } from "./review-player.js";
 import { proposeCut, proposeCutOut, proposeConcat } from "./cut.js";
 import { SourceImport } from "./import-source.js";
@@ -303,6 +304,8 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
           {selected !== "" && (
             <>
               {mediaControl("查看源素材代理（无声）", selected, project.revision, project.assets.find(a => a.assetId === selected)?.proxy)}
+              {project.assets.filter(a => a.assetId === selected && a.streams.some(s => s.kind === "video")).map(asset =>
+                <FrameInspector key={project.projectId + asset.assetId} projectId={project.projectId} asset={asset} theme={theme} />)}
               <Text style={heading}>单段裁剪</Text>
               <View style={row}>
                 {field("入点（秒，含）", start, setStart)}

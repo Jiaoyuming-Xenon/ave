@@ -11,6 +11,7 @@ import { encodeFramedChunk, decodeFramedChunk } from "#video-editor/bytes";
 import {
   UploadStatusSchema,
   SourceAssetSchema,
+  InspectFrameHeaderSchema,
   ProjectSnapshotSchema,
   JobSnapshotSchema,
   CreateJobResultSchema,
@@ -176,6 +177,19 @@ test.each([
     const commit = { requestId: "commit-1", uploadId: upload.uploadId, finalSha256: sourceHash };
     const asset = SourceAssetSchema.parse(await invoke("commit_upload", commit));
     expect(asset.original.sha256).toBe(sourceHash);
+    if (cadence === "VFR") {
+      const stream = asset.streams.find(s => s.kind === "video")!;
+      const packet = await invoke("inspect_frame", {
+        projectId, assetId: asset.assetId, streamUid: stream.streamUid,
+        sourcePresentationIndexHash: asset.presentationIndex.sha256, frame: 5, points: [],
+      });
+      expect(packet).toBeInstanceOf(Uint8Array);
+      const { metadata, payload } = decodeFramedChunk(packet as Uint8Array);
+      const header = InspectFrameHeaderSchema.parse(JSON.parse(new TextDecoder().decode(metadata)));
+      // Ordinal five follows the omitted 200 ms frame. Its true PTS is 240 ms.
+      expect(BigInt(header.pts) * BigInt(header.timeBase.num) * 25n).toBe(6n * BigInt(header.timeBase.den));
+      expect(header.previewSha256).toBe(createHash("sha256").update(payload).digest("hex"));
+    }
     const beforeReplay = await invoke("get_project", { projectId });
     expect(await invoke("commit_upload", commit)).toEqual(asset);
     await expect(
@@ -569,6 +583,7 @@ test("a paired viewer can read only its project and loses access when revoked", 
         title: "C",
       }),
     ).rejects.toThrow(/cannot modify this video project/i);
+    await expect(viewer.invokePluginRpc("video-editor", "video.v1.inspect_frame", {})).rejects.toThrow(/cannot modify this video project/i);
     await expect(viewer.invokePluginRpc("other-plugin", "read", {})).rejects.toThrow(
       /access denied/i,
     );

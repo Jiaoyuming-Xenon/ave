@@ -622,6 +622,31 @@ export const stopPlanningRunRpc = {
   input: PlanningRunRequestSchema,
   output: PlanningRunStatusSchema,
 };
+export const InspectFrameRequestSchema = z.object({
+  projectId: id, assetId: id, streamUid: id, sourcePresentationIndexHash: sha256,
+  frame: z.number().int().min(0).max(2_147_483_647),
+  points: z.array(z.object({
+    x: z.number().int().nonnegative(), y: z.number().int().nonnegative(), foreground: z.boolean(),
+  }).strict()).max(32),
+}).strict();
+export type InspectFrameRequest = z.infer<typeof InspectFrameRequestSchema>;
+
+export const InspectFrameHeaderSchema = InspectFrameRequestSchema.extend({
+  sourceSha256: sha256, pts: z.string().regex(/^-?[0-9]+$/), timeBase: RationalSchema,
+  frameCount: z.number().int().positive(),
+  width: z.number().int().positive(), height: z.number().int().positive(),
+  previewWidth: z.number().int().positive().max(640), previewHeight: z.number().int().positive().max(640),
+  previewSha256: sha256,
+  mask: z.object({
+    engine: z.literal("sam2.1-tiny"), weightsSha256: sha256, labelSha256: sha256,
+    foregroundPixels: z.number().int().nonnegative(),
+  }).strict().optional(),
+});
+export type InspectFrameHeader = z.infer<typeof InspectFrameHeaderSchema>;
+export const inspectFrameRpc = {
+  name: "video.v1.inspect_frame", input: InspectFrameRequestSchema, output: z.instanceof(Uint8Array),
+};
+
 export const ContactSheetRequestSchema = z
   .object({
     requestId,
