@@ -565,9 +565,10 @@ export class MediaService {
     assertRenderablePreview(plan);
     if (plan.deterministicBackendId !== "ffmpeg")
       editorFailure("CAPABILITY_UNAVAILABLE", "The approved backend is unavailable");
-    const op = plan.trimOperations[0]!;
+    const ops = plan.trimOperations;
+    const first = ops[0]!;
     const video = asset.streams.find(
-      (s) => s.streamUid === op.source.streamUid && s.kind === "video",
+      (s) => s.streamUid === first.source.streamUid && s.kind === "video",
     );
     const audio = asset.streams.filter((s) => s.kind === "audio");
     if (!video || audio.length > 1 || asset.streams.length !== audio.length + 1)
@@ -575,22 +576,32 @@ export class MediaService {
         "CAPABILITY_UNAVAILABLE",
         "Only one video and at most one audio stream are supported",
       );
-    const range = `start=${rationalSeconds(op.sourceRange.start)}:duration=${rationalSeconds(op.sourceRange.duration)}`;
-    const preview =
+    // One input per segment; each segment is trimmed in source time, rebased to
+    // zero, then concatenated in record order. Source PTS timing is preserved
+    // per segment (vfr), so VFR sources stay VFR through the concat.
+    const args = ["-v", "error", "-xerror", "-nostdin"];
+    const filters: string[] = [];
+    ops.forEach((op, i) => {
+      args.push("-i", this.cas.pathFor(asset.original));
+      const range = `start=${rationalSeconds(op.sourceRange.start)}:duration=${rationalSeconds(op.sourceRange.duration)}`;
+      filters.push(`[${i}:${video.streamIndex}]trim=${range},setpts=PTS-STARTPTS[vs${i}]`);
+      if (audio[0])
+        filters.push(`[${i}:${audio[0].streamIndex}]atrim=${range},asetpts=PTS-STARTPTS[as${i}]`);
+    });
+    const vLabels = ops.map((_, i) => `[vs${i}]`).join("");
+    const aLabels = audio[0] ? ops.map((_, i) => `[as${i}]`).join("") : "";
+    filters.push(`${vLabels}concat=n=${ops.length}:v=1:a=0[vcat]`);
+    if (audio[0]) filters.push(`${aLabels}concat=n=${ops.length}:v=0:a=1[acat]`);
+    filters.push(
       kind === "preview"
-        ? ",scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1"
-        : "";
-    const args = [
-      "-v",
-      "error",
-      "-xerror",
-      "-nostdin",
-      "-i",
-      this.cas.pathFor(asset.original),
+        ? "[vcat]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1[vout]"
+        : "[vcat]null[vout]",
+    );
+    args.push(
+      "-filter_complex",
+      filters.join(";"),
       "-map",
-      `0:${video.streamIndex}`,
-      "-vf",
-      `trim=${range},setpts=PTS-STARTPTS${preview}`,
+      "[vout]",
       "-fps_mode",
       "vfr",
       ...(kind === "preview" ? ["-enc_time_base:v", "filter"] : []),
@@ -598,18 +609,9 @@ export class MediaService {
       "libx264",
       "-pix_fmt",
       "yuv420p",
-    ];
+    );
     if (audio[0])
-      args.push(
-        "-map",
-        `0:${audio[0].streamIndex}`,
-        "-af",
-        `atrim=${range},asetpts=PTS-STARTPTS`,
-        "-c:a",
-        "aac",
-        "-ar",
-        "48000",
-      );
+      args.push("-map", "[acat]", "-c:a", "aac", "-ar", "48000");
     args.push("-movflags", "+faststart", output);
     await this.spawnChecked(this.tools.ffmpeg, args, signal);
   }
@@ -704,7 +706,14 @@ function checkCandidate(
   )
     editorFailure("QA_FAILED", "Unexpected candidate streams or dimensions");
   assertCandidateAudio(asset.streams, doc.streams);
-  const dur = plan.trimOperations[0]!.recordRange.duration;
+  let total = { num: 0n, den: 1n };
+  for (const op of plan.trimOperations) {
+    total = {
+      num: total.num * BigInt(op.recordRange.duration.den) + BigInt(op.recordRange.duration.num) * total.den,
+      den: total.den * BigInt(op.recordRange.duration.den),
+    };
+  }
+  const dur: Rational = { num: total.num.toString(), den: total.den.toString() };
   for (const s of doc.streams) {
     if (!s.time_base || !Number.isSafeInteger(s.duration_ts) || s.start_pts !== 0)
       editorFailure("QA_FAILED", "Missing or invalid candidate timeline");

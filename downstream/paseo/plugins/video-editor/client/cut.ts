@@ -53,3 +53,50 @@ export function proposeCut(
     maxCostMicros: "0",
   };
 }
+
+/** Delete the middle range [cutStart, cutEnd) and concatenate the rest: two contiguous trims. */
+export function proposeCutOut(
+  project: ProjectSnapshot,
+  assetId: string,
+  cutStart: string,
+  cutEnd: string,
+  totalSeconds: string,
+): EditPlanDraftV1 {
+  const asset = project.assets.find((a) => a.assetId === assetId);
+  const stream = asset?.streams.find((s) => s.kind === "video");
+  if (!asset || !stream) throw new Error("请选择含视频流的素材。");
+  const from = milliseconds(cutStart);
+  const to = milliseconds(cutEnd);
+  const total = milliseconds(totalSeconds);
+  if (to <= from) throw new Error("删除终点必须晚于删除起点。");
+  if (total <= to) throw new Error("素材总长必须大于删除终点。");
+  const ms = (v: bigint) => ({ num: v.toString(), den: "1000" });
+  const head = { num: from.toString(), den: "1000" };
+  const tailDuration = total - to;
+  const tailStart = { num: to.toString(), den: "1000" };
+  const base = proposeCut(project, assetId, "0", "0.001");
+  return {
+    ...base,
+    intent: `删除 ${asset.displayName} 的 ${cutStart.trim()}–${cutEnd.trim()} 秒并拼接前后段`,
+    trimOperations: [
+      {
+        opId: "trim-head",
+        order: "1",
+        trackId: "v1",
+        clipId: "clip-head",
+        source: base.trimOperations[0]!.source,
+        sourceRange: { start: ms(0n), duration: head },
+        recordRange: { start: ms(0n), duration: head },
+      },
+      {
+        opId: "trim-tail",
+        order: "2",
+        trackId: "v1",
+        clipId: "clip-tail",
+        source: base.trimOperations[0]!.source,
+        sourceRange: { start: tailStart, duration: ms(tailDuration) },
+        recordRange: { start: head, duration: ms(tailDuration) },
+      },
+    ],
+  };
+}

@@ -46,6 +46,7 @@
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 - 已实现待验收（2026-11-25，未跑真实模型/e2e）：独立 agent-worker 进程与守护 IPC——`packages/server/src/server/video/agent/`（`ipc.ts` JSONL 协议、`prompt.ts` 固定签名系统提示、`tools.ts` 封闭 5 件白名单工具、`session.ts` 锁定 ResourceLoader + `createAgentSession`、`worker-main.ts` 子进程入口、`controller.ts` 守护端 AgentRunController：每 run 一个子进程、事件经 store 持久化、重启 reconcile 标记 interrupted 不盲重放）。RPC 新增 `video.v1.start|steer|follow_up|stop|get_planning_run`（operator+，viewer 只读 `get_planning_run`），契约 v1 追加 4 个 schema 且 `v1.schema.json` 已重新生成（纯增量）。客户端 `edit-desk.tsx` 新增 Agent 规划面板（开始/继续/停止 + 事件流）。依赖新增 `@earendil-works/pi-coding-agent@1.5.2`（pin 见 `research/upstream.json` 的 `fcc33744`）。
 - 已实现待验收（2026-11-25，分析链路已本地冒烟，未跑 daemon e2e）：`video.v1.analyze_asset`（operator+，viewer 不可写）创建免审批的 `analysis` Job（按 asset+源 hash 幂等去重），`media.executeAnalysisJob` 校验源 hash 后读取 CAS 内不可变 presentation-index，经 `py-worker.ts` 调用新增的 `worker/daemon_cli.py`（`support` 能力探测 + `sampling-map`，纯 JSON stdio、`-I` 隔离运行、超时/abort 收口），结果以 `qa` artifact 写回 CAS 并落 Job 完成态。契约新增 `AnalyzeAssetInputSchema`、`JobSnapshot.analysisAssetId?`，`v1.schema.json` 重生成（纯增量 45 defs）。客户端素材卡片新增「分析采样」按钮。`daemon_cli.py` 冒烟：4 帧 25fps 索引采样为 4 个样本 identity 映射，篡改 source hash 被拒（rc=1）。
+- 已实现待验收（2026-11-25，多段拼接已用本机 FFmpeg 按相同 filter_complex 实跑验证）：preview profile 放开为"同一素材同一视频流的连续多段 trim"（record 区间从 0 密铺、禁止重定时/跨素材/其他操作类型），render 改为每段一个 -i + trim/setpts + concat，checkCandidate 按各段 record 时长求和校验；本机实测 2 段 1s 拼接输出 2.000s/50 帧/音频 2.000s 全解码无错，VFR 源 likewise 连续。客户端新增「删除中段并拼接」（proposeCutOut 生成两个连续 trim op）。
 
 ## 环境与错误
 
