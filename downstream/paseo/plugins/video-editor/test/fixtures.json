@@ -222,5 +222,17 @@
     "schema": "WorkerProfile",
     "valid": false,
     "value": { "profileId": "w", "engine": "ffmpeg", "colorSpaces": [], "maxWidth": 0 }
+  },
+  {
+    "name": "edit plan draft single trim is accepted",
+    "schema": "EditPlanDraftV1",
+    "valid": true,
+    "value": { "schemaVersion": "video.edit-plan/v1", "projectId": "proj", "baseTimelineRevision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "intent": "trim the middle", "trimOperations": [{ "opId": "op", "order": "1", "trackId": "track", "clipId": "clip", "source": { "assetId": "asset", "assetContentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "streamUid": "stream:0", "probeRevision": "1" }, "sourceRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } }, "recordRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } } }], "transformOperations": [], "audioOperations": [], "transitionOperations": [], "subtitleOperations": [], "generationRequests": [], "qaRequirements": [], "externalDestinations": [], "maxCostMicros": "100" }
+  },
+  {
+    "name": "edit plan draft intent cannot be empty",
+    "schema": "EditPlanDraftV1",
+    "valid": false,
+    "value": { "schemaVersion": "video.edit-plan/v1", "projectId": "proj", "baseTimelineRevision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "intent": "", "trimOperations": [], "transformOperations": [], "audioOperations": [], "transitionOperations": [], "subtitleOperations": [], "generationRequests": [], "qaRequirements": [], "externalDestinations": [], "maxCostMicros": "100" }
   }
 ]
