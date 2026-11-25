@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import {
   createProjectRpc,
   getProjectRpc,
+  listProjectsRpc,
   submitPlanRpc,
   decideApprovalRpc,
   createJobRpc,
@@ -30,6 +31,7 @@ const NOT_SELECTED = { selected: false };
 export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const create = useRpc(createProjectRpc);
   const read = useRpc(getProjectRpc);
+  const list = useRpc(listProjectsRpc);
   const submit = useRpc(submitPlanRpc);
   const decide = useRpc(decideApprovalRpc);
   const runJob = useRpc(createJobRpc);
@@ -40,6 +42,7 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const [sourceImport, setSourceImport] = useState<SourceImport | null>(null);
   const [confirmed, setConfirmed] = useState(0);
   const [project, setProject] = useState<ProjectSnapshot | null>(null);
+  const [projects, setProjects] = useState<Array<{ projectId: string; title: string; revision: string }>>([]);
   const [title, setTitle] = useState("");
   const [id, setId] = useState("");
   const [selected, select] = useState("");
@@ -216,6 +219,25 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
           },
           !title.trim(),
         )}
+      </View>
+      <View style={{ gap: 8 }}>
+        <View style={row}>
+          <Text style={heading}>我的项目</Text>
+          {button("列出可访问项目", async () => setProjects((await list({})).projects))}
+        </View>
+        {projects.map((entry) => (
+          <DeskControl
+            key={entry.projectId}
+            accessibilityRole="button"
+            action={async (value: string) => show(await read({ projectId: value }))}
+            value={entry.projectId}
+            style={styles.source}
+          >
+            <Text style={ink}>{entry.title}</Text>
+            <Text selectable style={muted}>{entry.projectId} · 版本 {entry.revision}</Text>
+          </DeskControl>
+        ))}
+        {projects.length === 0 && <Text style={muted}>点「列出可访问项目」查看本机或已配对设备可打开的项目。</Text>}
       </View>
       {project && (
         <>

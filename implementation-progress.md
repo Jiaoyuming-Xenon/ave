@@ -47,6 +47,7 @@
 - daemon 重启恢复的终态事件（代码已写，未运行）：故障矩阵审查发现 `store.ts` 的 `recoverJobs` 用裸 SQL UPDATE 把中断任务置为 `failed/NEEDS_RECONCILIATION`，绕过 `updateJob` 的事件发射，远端经 `get_events` 永远看不到重启终态。现在恢复每个任务后补发一条 `job.state.changed`（state=failed），与 `updateJob` 事件形状一致；二次重启无 active 任务则不重复发。新增 `job-recovery.test.ts`：活跃 rendering 任务关库重开后应 failed 且恰好一条终态事件，再次重开不重复。未运行 Vitest，未据此认定通过。
 - 共享 Android UI 的交付审批（代码已写，未运行）：`edit-desk.tsx` 原先把「成品交付审批」整块与 web 播放器一起门控（`layout.platform === "web"`），手机 operator 看不到也无法批准导出。现解耦：审批块在所有平台渲染，代理播放仍仅 web（`mediaControl` 非 web 返回 null），native 增加「播放请在桌面网页端、此处核对哈希并批准」提示。预览/成品渲染审批本就在各平台渲染。源素材导入仍仅 web（DOM 文件选择器），native 导入未实现。未在 Android 真机/模拟器验收。
 - 设备项目发现（代码已写，未运行）：手机监控面需要枚举可访问项目。新增 `store.listProjects(principal)`：owner（projectIds=null）返回全部项目；配对设备按 `project_grants` 连接且再经 `principal.projectIds` 范围过滤（双重防护）。新增 RPC `video.v1.list_projects` 并纳入 viewer 可读方法，设备通道可直接调用。`store.test.ts` 覆盖 owner 全量、设备仅授权项目、范围外 grant 被过滤、未配对主体为空。未运行 Vitest。
+- 项目发现接入工作台（代码已写，未运行）：`contracts/v1.ts` 增 `listProjectsRpc`（output 用内联 zod，不新增导出 `*Schema`，故 `v1.schema.json` 生成bundle不变、无需重生成）；`edit-desk.tsx` 增「我的项目」区，点「列出可访问项目」调 `list_projects`，渲染可点选条目直接 `read` 打开。桌面与手机共用，免去手输项目 ID。未运行 typecheck/真机。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
