@@ -210,6 +210,22 @@ it("passes project context to the configured provider and persists a strict tool
       .toBe("failed");
     expect(requests).toHaveLength(2);
     expect(editor.store.project(projectId, principal).plans).toEqual(result.plans);
+
+    vi.stubEnv("VIDEO_EDITOR_PLANNER_MODEL", "fixture/fixture");
+    const rejected = await editor.agents.startRun(
+      { projectId, requestId: "provider-error", prompt: draft.intent },
+      principal,
+    );
+    await expect
+      .poll(
+        () =>
+          editor.store.runLifecycle(projectId, principal).find((run) => run.runId === rejected.runId)
+            ?.state,
+        { timeout: 10_000 },
+      )
+      .toBe("failed");
+    expect(requests).toHaveLength(3);
+    expect(editor.store.project(projectId, principal).plans).toEqual(result.plans);
   } finally {
     vi.unstubAllEnvs();
     await editor.stop();

@@ -6,6 +6,7 @@ import {
   ModelRuntime,
   SessionManager,
   SettingsManager,
+  type AgentSessionEvent,
 } from "@earendil-works/pi-coding-agent";
 import { z } from "zod";
 import { VideoToolCallSchema, type EditorEvent } from "#video-editor/contracts/v1";
@@ -29,7 +30,7 @@ interface PiSession {
   followUp(text: string): Promise<unknown>;
   abort(): Promise<void>;
   dispose(): void;
-  subscribe(listener: (event: unknown) => void): void;
+  subscribe(listener: (event: AgentSessionEvent) => void): void;
   getActiveToolNames(): string[];
   getCallableToolNames(): string[];
   getAllTools(): Array<{ name: string }>;
@@ -200,7 +201,12 @@ export async function createPlannerSession(options: PlannerSessionOptions) {
   }
 
   let seq = 0;
-  session.subscribe((piEvent: unknown) => {
+  let modelFailed = false;
+  session.subscribe((piEvent) => {
+    if (piEvent.type === "agent_end") {
+      const finalMessage = piEvent.messages.at(-1);
+      modelFailed = finalMessage?.role === "assistant" && finalMessage.stopReason === "error";
+    }
     const e = piEvent as { type?: string; id?: string; toolCallId?: string };
     const type = typeof e?.type === "string" ? e.type : "agent.unknown";
     if (type === "tool_execution_start" || type === "message_end" || type === "agent_end") {
@@ -226,10 +232,13 @@ export async function createPlannerSession(options: PlannerSessionOptions) {
 
   return {
     session,
-    prompt: (text: string) =>
-      session.prompt(
+    async prompt(text: string) {
+      modelFailed = false;
+      await session.prompt(
         `The daemon bound this run to projectId ${options.projectId}. Begin with get_project_snapshot for that project.\n\nUser edit request:\n${text}`,
-      ),
+      );
+      if (modelFailed) throw new Error("Planner model request failed");
+    },
     steer: (text: string) => session.steer(text),
     followUp: (text: string) => session.followUp(text),
     abort: () => session.abort(),
