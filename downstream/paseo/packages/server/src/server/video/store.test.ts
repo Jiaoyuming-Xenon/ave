@@ -426,3 +426,52 @@ describe("createProject scope and transactional rollback", () => {
     store.close();
   });
 });
+
+describe("plan validation edges", () => {
+  async function withAsset() {
+    const { store, cas, project } = await fixture();
+    const blob = await cas.writeBytes(Buffer.from("not-a-video"), "video/mp4");
+    await store.addAsset(
+      project.projectId,
+      {
+        assetId: blob.sha256,
+        original: blob,
+        displayName: "source.mp4",
+        streams: [
+          { streamUid: "stream:0", streamIndex: 0, kind: "video" as const, codec: "h264", timeBase: { num: "1", den: "30" }, disposition: {} },
+        ],
+        presentationIndex: blob,
+        probe: blob,
+        sourceNeverWritable: true as const,
+      },
+      "asset",
+      owner,
+    );
+    return { store, current: store.project(project.projectId, owner) };
+  }
+
+  it("rejects stale revision/manifest, bad asset identity, missing stream and invalid ranges", async () => {
+    const { store, current } = await withAsset();
+    const base = draft(current).draft;
+    expect(() => store.validateProposal(base, owner)).not.toThrow();
+
+    expect(() => store.validateProposal({ ...base, baseTimelineRevision: "999" }, owner)).toThrow("older project snapshot");
+    expect(() => store.validateProposal({ ...base, baseAssetManifestHash: "c".repeat(64) }, owner)).toThrow("older project snapshot");
+
+    const op = base.trimOperations[0]!;
+    const badAsset = { ...base, trimOperations: [{ ...op, source: { ...op.source, assetId: "missing" } }] };
+    expect(() => store.validateProposal(badAsset as typeof base, owner)).toThrow("missing or changed asset");
+    const badHash = { ...base, trimOperations: [{ ...op, source: { ...op.source, assetContentHash: "d".repeat(64) } }] };
+    expect(() => store.validateProposal(badHash as typeof base, owner)).toThrow("missing or changed asset");
+    const badStream = { ...base, trimOperations: [{ ...op, source: { ...op.source, streamUid: "stream:99" } }] };
+    expect(() => store.validateProposal(badStream as typeof base, owner)).toThrow("existing video stream");
+
+    const negStart = { ...base, trimOperations: [{ ...op, sourceRange: { start: { num: "-1", den: "1" }, duration: { num: "1", den: "1" } } }] };
+    expect(() => store.validateProposal(negStart as typeof base, owner)).toThrow("non-empty, non-negative");
+    const zeroDur = { ...base, trimOperations: [{ ...op, sourceRange: { start: { num: "0", den: "1" }, duration: { num: "0", den: "1" } }, recordRange: { start: { num: "0", den: "1" }, duration: { num: "0", den: "1" } } }] };
+    expect(() => store.validateProposal(zeroDur as typeof base, owner)).toThrow("non-empty, non-negative");
+    const zeroDen = { ...base, trimOperations: [{ ...op, recordRange: { start: { num: "0", den: "0" }, duration: { num: "1", den: "1" } } }] };
+    expect(() => store.validateProposal(zeroDen as typeof base, owner)).toThrow("non-empty, non-negative");
+    store.close();
+  });
+});
