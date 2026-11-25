@@ -1,0 +1,293 @@
+{
+  "movingDisk": {
+    "reportSha256": "3fcf4a52659ff974d2202339ac16aa69a1ece2a98fe20e519afeabe2c67d9d7b",
+    "report": {
+      "revision": "ec4d2cb062b548996b179d493fdd05340de702a1",
+      "sourceSha256": "484fad04ea2f2a2eef9cce6431577a23ec7ae28d890aef6ed3cd25cd90b6eecb",
+      "maskReportSha256": "9a364c63ab547da8777365f274ff76ca6ba50404f0809fddfdbf6470112fe789",
+      "seed": 732021,
+      "guidanceScale": 5.0,
+      "contentBox": [
+        16,
+        0,
+        816,
+        480
+      ],
+      "sampleFps": 9,
+      "steps": 20,
+      "prompt": "A bright cobalt blue polished ceramic ball moving slowly to the right, on a dark slate background. Static camera, flat clean composition, green rectangle on the right.",
+      "negativePrompt": "yellow, orange ball, shaky camera, text, lettering, blurry",
+      "conditions": {
+        "conditions/video-0000.png": "c36c51c3fbbd71de3092ce08d790af295422a795e8130ab2a46cfba0357b64e0",
+        "conditions/mask-0000.png": "1fc0b7980e49e896ffdb0767fc60274c6b2727d3bc9a901598ef57fb82b2c53e",
+        "conditions/video-0001.png": "dec11f46f2c43db3d2cee2c86ce1cbb5e96db1c211abd414d2fb345f1127c967",
+        "conditions/mask-0001.png": "39421b24347c853c7d66f8496f09164db216df9d017ff252d48acaae4327de30",
+        "conditions/video-0002.png": "1156bf20378ac9309bc8cc3e7613087ef7d45bb5f63d1c03df526c58862aa2b4",
+        "conditions/mask-0002.png": "258ce466fa9e64ef95969b96f306a9b96de855722e42cf70fbcea3ac466138a9",
+        "conditions/video-0003.png": "c6e231de295fc5b1d359d14b28b32afc17231ca707c3a73e30e4a59e031c11f5",
+        "conditions/mask-0003.png": "30f23e004663cf3adc1779abf35057cd49f6739384fd22829610a70b5ef160c0",
+        "conditions/video-0004.png": "e64d025a955d941c1d7a6697940c4070b40dd872f65417194f6b8e76d7d73172",
+        "conditions/mask-0004.png": "a827dec605e117efccb151b22582b263df4438e7943d578bcac25922b3cf3981",
+        "conditions/video-0005.png": "6a1388c6ddb10505543173de68d38d017a90b83cf98305c95e279a3944556134",
+        "conditions/mask-0005.png": "94d8af46c5fc777f73844028465013cf916f0b8e0e78a1ca4145a8e3bfed6d8a",
+        "conditions/video-0006.png": "1bf0dc7f1f33dc2fab238f2a1a7899a07299956bc2db5005ae0d2eb8b1bb3d62",
+        "conditions/mask-0006.png": "3a65856bc9083e983f70d10589c23c0d9cf5b817bd9379ffeb0355ceb4344a9d",
+        "conditions/video-0007.png": "fc4c39bb8a72f8d391c7657fece871ad868bc52eab58bf50a1cac354d702ff83",
+        "conditions/mask-0007.png": "fc5b784ae438d8de9f9857672757bf4cf7150a110b41fffff2a99715f6f1c453",
+        "conditions/video-0008.png": "92d43c707e3b8d2137cbc01b468896a255d598abcd101d8cbb92bfb751b533b4",
+        "conditions/mask-0008.png": "fa506066b6f1e46e4d5bedbafaaac2c128c6dbc5498de8258f5a1eeb2ba47631"
+      },
+      "runtime": {
+        "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "diffusers": "0.36.0",
+        "transformers": "4.57.3",
+        "textSeconds": 7.841158535999966,
+        "generationSeconds": 59.53274275400054,
+        "peakAllocatedBytes": 5411276288,
+        "peakReservedBytes": 5779750912
+      },
+      "qa": {
+        "frames": 18,
+        "protectedPixels": 1073516,
+        "preencodeProtectedMaxError": 0,
+        "encodedProtectedMeanErrorVsNoop": 0.15498387230992985,
+        "encodedProtectedMaxErrorVsNoop": 176,
+        "shots": {
+          "noop": {
+            "blueFraction": [
+              0.0002595380223202699,
+              0.0,
+              0.00025960539979231567,
+              0.0,
+              0.0,
+              0.0,
+              0.00032605151613955004,
+              0.0,
+              0.00025960539979231567
+            ],
+            "motionAlignedMeanRgbDifference": [
+              1.8275772526616463,
+              1.745953432009002,
+              1.7489615784008308,
+              1.634978354978355,
+              2.5089285714285716,
+              2.8133333333333335,
+              2.90242656449553,
+              2.6607297063903284
+            ]
+          },
+          "framewise": {
+            "blueFraction": [
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              0.9993626513702996,
+              0.9960873818063254,
+              0.9996761658031088,
+              1.0
+            ],
+            "motionAlignedMeanRgbDifference": [
+              1.0772093828442828,
+              1.0679477192071323,
+              1.0335756317064728,
+              1.0347186147186147,
+              2.3536352040816326,
+              2.2097777777777776,
+              2.698339719029374,
+              2.3602115716753023
+            ]
+          },
+          "vace": {
+            "blueFraction": [
+              0.9976641577991175,
+              0.9968839262529213,
+              0.9997403946002077,
+              1.0,
+              1.0,
+              0.9987253027405991,
+              0.9983697424193022,
+              0.9961139896373057,
+              0.9997403946002077
+            ],
+            "motionAlignedMeanRgbDifference": [
+              6.81147753830174,
+              5.71392711849736,
+              3.9132052613361026,
+              4.60008658008658,
+              7.345663265306122,
+              6.546539682539683,
+              6.88301404853129,
+              9.514788428324698
+            ]
+          }
+        },
+        "audioPcmSha256": "da05357fd1e66ad663958ba3b8d2fd7db1863738f04c5adf852fbbacb57a3c7e",
+        "sourceWithAudioSha256": "7d80d248b702097b577960eb9c00587a9612ab092bf3113b9103e00654a268be",
+        "candidateSha256": "15e4ccc60a52a6c02164773899ba2b308cf9d0f7d2b9c68576bffc3eca4daa27",
+        "outputSha256": "083e97ef772952aa0a1dbd0c35fc66432669af6a5443bdcaa016545394976455"
+      }
+    }
+  },
+  "bedroomPillow": {
+    "reportSha256": "0526f6af8cce4e6f145243efdbc809e8ad8bd2a9fb0816665c56a894abb2b399",
+    "report": {
+      "revision": "ec4d2cb062b548996b179d493fdd05340de702a1",
+      "sam2ReportSha256": "8e773015772fc6630a2bb95bca31e1e58b5185198c40f92df1ba6233335f17d9",
+      "conditions": {
+        "conditions/video-0000.png": "c0e22d3da327f8e1b8d22e96620a251668d0dc55cfeda5e0572cafb44465bff3",
+        "conditions/mask-0000.png": "815d3a7e0d9aec4bf996d8c6a8c90c41133038e99c378852a6eb122a4f786f9a",
+        "conditions/video-0001.png": "49a8f71ccf66014107dff23c49a81e3062b33cf9b47b161ac53359fd31c9a74f",
+        "conditions/mask-0001.png": "16aa115b1552607a395a235b649b20033c50ae69f15eb546349ab7fe76e22cc2",
+        "conditions/video-0002.png": "1426bd078d87b220e1c66502eb0d7f5df8268c1031757716bfd42488d6e2a22d",
+        "conditions/mask-0002.png": "b7eb8b33669a07c12428ef8206dbac6dad17dda12375da18bc70f4862fefba14",
+        "conditions/video-0003.png": "b413f5dc0602c4d186adeb41e63c09feccad7a3c3f9acf2e002ea096682b1963",
+        "conditions/mask-0003.png": "cd1d967fb39e0fdb40327d264f56a6ce1869794f19fa518dbd6caec76b8f3705",
+        "conditions/video-0004.png": "e41cfc16570f6dbdbc3e039b5ea684c791fb3535b2e6735e3f90b767b9cf0e81",
+        "conditions/mask-0004.png": "24551d397d2b0cae4ce77e32a0ba19a009718b398c1d8744f3e9953016881f81",
+        "conditions/video-0005.png": "60e93d4c3fba2f29469d4a34b387b7bfb3196fd9938c27f6a1ec49db90b8089f",
+        "conditions/mask-0005.png": "0038ee2e31a459cc78048acf63c15a9f0f228f7e3f4ca9680071c6eae72b8f08",
+        "conditions/video-0006.png": "312caa0ad22d418c629270a2bc6e4267237bee1c479ec21919eb28f937ffa13f",
+        "conditions/mask-0006.png": "dd45aa37aa7e4f9200d553f0c1c9d47285383742cf5c90079d1e043e4f5857c1",
+        "conditions/video-0007.png": "4768aa21eef80bcde8e3c81567572cc299e77bc9b14c043f325a1e6339c9e7f5",
+        "conditions/mask-0007.png": "78fb3767df63371aa90fe8c5fa7abdf77b4613597c6f8821c5cf39abd933222b",
+        "conditions/video-0008.png": "c77ea7a96d25a3adcfe57dc3e7eef471ac5110418828b65ea589cc48d60aee78",
+        "conditions/mask-0008.png": "3e49f9291b85e7dc6942d98b783abd139020db7ae0bb84dd5411a9c8f85be37a"
+      },
+      "sampleFps": 9,
+      "seed": 732022,
+      "steps": 20,
+      "guidanceScale": 5.0,
+      "prompt": "A bright turquoise decorative linen pillow on the right side of a bed, realistic woven fabric, soft daylight, bedroom home video.",
+      "negativePrompt": "beige pillow, pink pillow, extra objects, text, blurry",
+      "runtime": {
+        "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+        "torch": "2.13.0+cu130",
+        "cuda": "13.0",
+        "diffusers": "0.36.0",
+        "transformers": "4.57.3",
+        "textSeconds": 8.28766197799996,
+        "generationSeconds": 61.339977755999826,
+        "peakAllocatedBytes": 5411276288,
+        "peakReservedBytes": 5779750912
+      },
+      "protectedPixels": 4531668,
+      "preencodeProtectedMaxError": 0,
+      "encodedProtectedMeanErrorVsNoop": 0.7550565634257996,
+      "encodedProtectedMaxErrorVsNoop": 109,
+      "sourceTurquoiseByFrame": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "exportTurquoiseByFrame": [
+        0.9587078461850375,
+        0.9660420753568288,
+        0.9624628679449095,
+        0.9631136425278004,
+        0.9544784124430142,
+        0.9436760873922629,
+        0.9519056869180789,
+        0.956695803029292,
+        0.9537784299339692
+      ],
+      "candidateSha256": "091507c7d60bd2755b81b9c48a7b1fafbe2355abe293a82489f7be1187a701ae",
+      "outputSha256": "bbc86aa6a5c63f9feb7645c8342fa812c9e6d104a04d6642c2144fc65653eda5"
+    }
+  },
+  "pillowMask": {
+    "reportSha256": "8e773015772fc6630a2bb95bca31e1e58b5185198c40f92df1ba6233335f17d9",
+    "report": {
+      "upstream": "2b90b9f5ceec907a1c18123530e92e794ad901a4",
+      "weightsSha256": "7402e0d864fa82708a20fbd15bc84245c2f26dff0eb43a4b5b93452deb34be69",
+      "region": [
+        515,
+        275,
+        706,
+        423
+      ],
+      "points": [
+        [
+          607,
+          355,
+          true
+        ],
+        [
+          485,
+          365,
+          false
+        ],
+        [
+          598,
+          264,
+          false
+        ]
+      ],
+      "frames": [
+        {
+          "frame": 0,
+          "sourceSha256": "376b034cca151817aeee7b27b581baa4aec9c9aef3807223d2deeb8dcc8d3032",
+          "maskSha256": "63f514e93469cfa3e54bd6eda30301adfe6d7d075ded80bf82329caf4d1bd933",
+          "rawArea": 14797
+        },
+        {
+          "frame": 1,
+          "sourceSha256": "71d4ecceceeb0e53cb9d1c0332c89123946cf71cbd807e4fc6afacc244055b47",
+          "maskSha256": "a06a93e9c9c8f7b1b80e446a8af4c2d13fdd99512f34aaaf4887f5d3d1209234",
+          "rawArea": 14783
+        },
+        {
+          "frame": 2,
+          "sourceSha256": "f643d5f97fab2ee9b02d310850fb33392a3135cb7f3e997f1746c18cd8fa8b95",
+          "maskSha256": "7b379d653c696004e496f717621b8d17328a4fb18cc97552fefbc9f21886d4c8",
+          "rawArea": 14812
+        },
+        {
+          "frame": 3,
+          "sourceSha256": "0ad258da8d7f3f1ac8f6bde25f0cc78fd6c82d57bc8a7862382e4d43465463c6",
+          "maskSha256": "a45e5fcfe82cc115703732acab62b731241640ade4807835120a655099363e7f",
+          "rawArea": 14748
+        },
+        {
+          "frame": 4,
+          "sourceSha256": "87ccc6c23c287e39e622d3ae2319d7c52e8dbad7fd16003979585461130c1e99",
+          "maskSha256": "a56ef3260a6ec60a9b899b97b472236ee17365e82bfc2796f91113479fbf9bc5",
+          "rawArea": 14916
+        },
+        {
+          "frame": 5,
+          "sourceSha256": "e5bc58632793d2cee08b3ce3aca8e77fcb41e07306c226e44fa2ab16fbcea0db",
+          "maskSha256": "797d14801887e640411a18ebe6e4e7df3e0389eae51ef00a3351021f231d51b1",
+          "rawArea": 14967
+        },
+        {
+          "frame": 6,
+          "sourceSha256": "28d5d374ce9a72dc2995e48e8b3d783b2d1c937b188b95b33db3660e3108a586",
+          "maskSha256": "b79f9bb9338a2c2ad9ab56c887eca2500676f84dbbeb9701c9f568e48f72b5ab",
+          "rawArea": 14929
+        },
+        {
+          "frame": 7,
+          "sourceSha256": "52715597733352744331baeb95593136f479788112f147135f0d4f26e70c355c",
+          "maskSha256": "a7c43f6d7a46a3ff20339762c67cea78dbe07747ab32b9ba0811a60204af0b43",
+          "rawArea": 14987
+        },
+        {
+          "frame": 8,
+          "sourceSha256": "14288fea237adf4f68bf3c9d6a809426edcc429d8537932a1891c9250cb4a383",
+          "maskSha256": "4a3b266dd89e2d0315b867851226ba1bbd83ea759fa74bf447714433b7fbdb84",
+          "rawArea": 14993
+        }
+      ]
+    }
+  }
+}
