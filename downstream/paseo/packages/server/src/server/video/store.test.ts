@@ -379,3 +379,29 @@ describe("controlJob terminal matrix", () => {
     store.close();
   });
 });
+
+describe("events cursor and isolation", () => {
+  it("filters by afterSeq, keeps per-project seq monotonic, and isolates projects", async () => {
+    const { store, project } = await fixture();
+    const second = store.createProject({ requestId: "second", title: "Second", principal: owner });
+
+    const all = store.events(project.projectId, "0", owner).events;
+    expect(all.length).toBeGreaterThan(0);
+    expect(all.every((e) => e.projectId === project.projectId)).toBe(true);
+    const seqs = all.map((e) => Number(e.seq));
+    expect(seqs).toEqual([...seqs].sort((a, b) => a - b));
+    expect(new Set(seqs).size).toBe(seqs.length);
+
+    // Cursor at the latest seq yields nothing further.
+    const lastSeq = all[all.length - 1]!.seq;
+    expect(store.events(project.projectId, lastSeq, owner).events).toHaveLength(0);
+    // Cursor before the first event yields everything.
+    expect(store.events(project.projectId, "0", owner).events.length).toBe(all.length);
+
+    // The second project's events never leak into the first project's stream.
+    const secondEvents = store.events(second.projectId, "0", owner).events;
+    expect(secondEvents.every((e) => e.projectId === second.projectId)).toBe(true);
+    expect(secondEvents.some((e) => e.projectId === project.projectId)).toBe(false);
+    store.close();
+  });
+});
