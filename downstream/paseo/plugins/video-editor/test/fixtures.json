@@ -456,5 +456,41 @@
     "schema": "ProjectSnapshot",
     "valid": false,
     "value": { "protocolVersion": "2", "projectId": "p", "title": "T", "revision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "assets": [], "plans": [], "approvals": [], "jobs": [], "latestSeq": "0" }
+  },
+  {
+    "name": "decide approval result returns approval and grant",
+    "schema": "DecideApprovalResult",
+    "valid": true,
+    "value": { "approval": { "approvalId": "approval", "projectId": "proj", "subjectType": "edit_plan", "subjectId": "plan", "subjectRevision": "1", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "requiredInputs": [{ "type": "asset", "id": "asset", "revision": "1", "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }], "diffSummary": { "intent": "trim", "operationCount": 1, "summary": "single trim" }, "generationCostCapMicros": "100", "externalDestinations": [], "status": "approved", "expiresAt": "2026-11-25T00:00:00Z" }, "grant": { "grantId": "g", "approvalId": "approval", "projectId": "proj", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "approvedByDeviceId": "owner", "approvedAt": "2026-11-25T00:00:00Z", "expiresAt": "2026-11-26T00:00:00Z" } }
+  },
+  {
+    "name": "decide approval result approval must be complete",
+    "schema": "DecideApprovalResult",
+    "valid": false,
+    "value": { "approval": { "approvalId": "approval" } }
+  },
+  {
+    "name": "plan review result returns plan and approval",
+    "schema": "PlanReviewResult",
+    "valid": true,
+    "value": { "plan": { "schemaVersion": "video.edit-plan/v1", "projectId": "proj", "baseTimelineRevision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "intent": "trim the middle", "trimOperations": [{ "opId": "op", "order": "1", "trackId": "track", "clipId": "clip", "source": { "assetId": "asset", "assetContentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "streamUid": "stream:0", "probeRevision": "1" }, "sourceRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } }, "recordRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } } }], "transformOperations": [], "audioOperations": [], "transitionOperations": [], "subtitleOperations": [], "generationRequests": [], "qaRequirements": [], "externalDestinations": [], "maxCostMicros": "100", "deterministicBackendId": "ffmpeg", "planId": "plan", "revision": "1", "runId": "run", "idempotencyKey": "key", "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "status": "proposed" }, "approval": { "approvalId": "approval", "projectId": "proj", "subjectType": "edit_plan", "subjectId": "plan", "subjectRevision": "1", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "requiredInputs": [], "diffSummary": { "intent": "trim", "operationCount": 1, "summary": "single trim" }, "generationCostCapMicros": "100", "externalDestinations": [], "status": "pending", "expiresAt": "2026-11-25T00:00:00Z" } }
+  },
+  {
+    "name": "plan review result plan must be complete",
+    "schema": "PlanReviewResult",
+    "valid": false,
+    "value": { "plan": {}, "approval": {} }
+  },
+  {
+    "name": "plan review request carries a draft",
+    "schema": "PlanReviewRequest",
+    "valid": true,
+    "value": { "requestId": "r", "runId": "run", "toolCallId": "call", "draft": { "schemaVersion": "video.edit-plan/v1", "projectId": "proj", "baseTimelineRevision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "intent": "trim the middle", "trimOperations": [{ "opId": "op", "order": "1", "trackId": "track", "clipId": "clip", "source": { "assetId": "asset", "assetContentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "streamUid": "stream:0", "probeRevision": "1" }, "sourceRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } }, "recordRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } } }], "transformOperations": [], "audioOperations": [], "transitionOperations": [], "subtitleOperations": [], "generationRequests": [], "qaRequirements": [], "externalDestinations": [], "maxCostMicros": "100" } }
+  },
+  {
+    "name": "plan review request draft must be complete",
+    "schema": "PlanReviewRequest",
+    "valid": false,
+    "value": { "requestId": "r", "runId": "run", "toolCallId": "call", "draft": {} }
   }
 ]
