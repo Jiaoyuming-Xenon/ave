@@ -52,6 +52,7 @@
 - 终态矩阵单元测试（代码已写，未运行）：`store.test.ts` 增 `controlJob terminal matrix`，单 job 顺序覆盖无 worker `pause→paused`、`resume→rendering_preview`、有 worker `pause→pausing`、无 worker 从 pausing `cancel→cancelled`、对已终态 job 再 cancel 抛 “already finished”，并断言 `events()` 中 `job.state.changed` 含 rendering_preview/paused/pausing/cancelled。直接验收 goal① 的取消/暂停终态与事件发射。未运行 Vitest。
 - 授权角色矩阵测试（代码已写，未运行）：新增 `authorization.test.ts`，覆盖 `editorPrincipalForCaller`（显式设备凭据优先、daemon.manage owner 会话映射、无凭据拒绝）与 `authorizeVideoMethod`（非 video 方法拒绝；owner 可 manage；viewer 可读含 list_projects/read_asset_chunk 但不可写/manage；operator 可编辑/控制 job 但不可 manage 设备/导入、不可 revoke_device）。直接验收 goal① 的角色/范围授权。未运行 Vitest。
 - list_projects 设备通道 e2e（代码已写，未运行）：`editor.e2e.test.ts` 的 paired-viewer 用例增断言——经真实 daemon＋DaemonClient 设备通道，`video.v1.list_projects` 对 viewer 仅返回其授权项目 A，owner 会话返回 A/B 全部。与 store 单元测试互补，验收 goal① 项目发现的范围隔离全链路。未运行 Vitest。
+- operator 设备通道读访问 e2e（代码已写，未运行）：`editor.e2e.test.ts` 的 paired-operator 用例增断言——operator 经设备通道 `list_projects` 仅返回自身项目，`get_events(afterSeq:"0")` 可读到事件日志（length>0）。补齐 operator 在设备通道上的项目发现与事件读路径。未运行 Vitest。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误

@@ -619,6 +619,14 @@ test("a paired operator reaches approval and job controls but never device manag
       projectId: project.projectId,
       title: "Ops",
     });
+    // An operator discovers its own project and reads the event log over the device channel.
+    expect(await call("list_projects", {})).toEqual({
+      projects: [{ projectId: project.projectId, title: "Ops", revision: project.revision }],
+    });
+    const log = (await call("get_events", { projectId: project.projectId, afterSeq: "0" })) as {
+      events: Array<{ type: string }>;
+    };
+    expect(log.events.length).toBeGreaterThan(0);
   } finally {
     try {
       await Promise.all(clients.map((client) => client.close()));
