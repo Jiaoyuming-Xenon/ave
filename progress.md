@@ -46,3 +46,7 @@
 - 本次没有编写应用代码，没有构建 GUI/APK/安装包，没有运行模型、素材转码或效果 benchmark。
 - WebSearch 空结果与部分 WebFetch 失败已记录到 `task_plan.md`，未将失败的抓取当作资料事实。
 - 原始 `pi`、`paseo` 仓库未修改；仅新增根目录调研/计划文件并重写 `demo.md`。
+
+## K · 审片续验
+
+- 构建 protocol 后，Linux Chrome 三种工作台场景通过；server/video 另 8 套 26 项通过（含 25/30 fps CFR、25 fps VFR、批准成品下载后完整解码）。本轮非 Electron 或 Android 验收。

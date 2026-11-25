@@ -248,3 +248,5 @@
 | 一次引入 Photo/Effect/SoundCraft | 功能广 | 多套项目/时间/任务事实源、alpha 风险、打包和许可闭包膨胀 | 首版排除，未来独立适配器评审 |
 
 最终边界：GUI 手动工具和 Agent 规划共用 `EditCommand`/EditGraph，**不是两套执行逻辑**。FilmCraft 只消费受控 staging 中的源资产和 canonical operation，输出必须回 CAS；不拥有用户项目、审批、CAS、远程连接或最终 Job 状态。FFmpeg 仍是 ffprobe、VFR/多流/附件、生成回合成和独立 QA 的基准后端。首版不把 FilmCraft WASM 放进 renderer，也不将 egui 窗口当主工作台；可选“专家模式”另开 FilmCraft 窗口只能作用于派生副本并显式重导入。
+
+- 成品审片复测：根快照与本地 downstream 同名文件逐字节一致。首次运行缺少 protocol/dist/plugin-requirements.js，插件编译子进程未能导入 workspace 依赖；先构建依赖再复验。
