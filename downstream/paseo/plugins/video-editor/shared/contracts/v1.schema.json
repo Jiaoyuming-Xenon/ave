@@ -895,7 +895,8 @@
             "qa",
             "manifest",
             "contact",
-            "scenecuts"
+            "scenecuts",
+            "waveform"
           ]
         },
         "blob": {

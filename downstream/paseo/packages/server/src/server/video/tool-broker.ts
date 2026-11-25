@@ -134,6 +134,7 @@ export class VideoToolBroker {
         if (!latest) editorFailure("ASSET_NOT_FOUND", "No analysis job exists for this asset");
         const qa = latest.artifacts.find((a) => a.kind === "qa");
         const scene = latest.artifacts.find((a) => a.kind === "scenecuts");
+        const wave = latest.artifacts.find((a) => a.kind === "waveform");
         return {
           assetId: asset.assetId,
           contentHash: asset.original.sha256,
@@ -145,6 +146,8 @@ export class VideoToolBroker {
           qaSha256: qa?.blob.sha256 ?? null,
           scenecutsArtifactId: scene?.artifactId ?? null,
           scenecutsSha256: scene?.blob.sha256 ?? null,
+          waveformArtifactId: wave?.artifactId ?? null,
+          waveformSha256: wave?.blob.sha256 ?? null,
           note: "Metadata only; the sampling map stays in CAS and is never sent to the model. Use get_scene_cuts for the cut list.",
         };
       }

@@ -36,6 +36,12 @@ interface SceneCutDoc {
   cuts: Array<{ frameIndex: number; ptsTime: string; score: string; aligned: { num: string; den: string } }>;
 }
 
+interface WaveformDoc {
+  bucketMs?: number;
+  truncated?: boolean;
+  buckets: string[];
+}
+
 export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const create = useRpc(createProjectRpc);
   const read = useRpc(getProjectRpc);
@@ -88,6 +94,7 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const [notice, setNotice] = useState("");
   const [sheetBlob, setSheetBlob] = useState<BlobRef | null>(null);
   const [sceneCuts, setSceneCuts] = useState<{ assetId: string; doc: SceneCutDoc } | null>(null);
+  const [waveform, setWaveform] = useState<{ assetId: string; doc: WaveformDoc } | null>(null);
   const [mainAsset, setMainAsset] = useState("");
   const [planPrompt, setPlanPrompt] = useState("");
   const [run, setRun] = useState<PlanningRunStatus | null>(null);
@@ -336,19 +343,21 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                 })}
               {sheetBlob && project && mediaControl("查看联系表", `contact:${sheetBlob.sha256}`, project.revision, sheetBlob, "contact")}
               {asset.streams.some((s) => s.kind === "video") &&
-                button("场景切点", async () => {
+                button("分析切点/波形", async () => {
                   await analyze({
                     requestId: requestId(`analyze:${asset.assetId}`),
                     projectId: project.projectId,
                     assetId: asset.assetId,
                   });
                   let doc: SceneCutDoc | null = null;
+                  let doneJob: (typeof project.jobs)[number] | undefined;
                   for (let attempt = 0; attempt < 20 && !doc; attempt++) {
                     const snap = await read({ projectId: project.projectId });
                     show(snap);
                     const job = snap.jobs
                       .filter((j) => j.analysisAssetId === asset.assetId)
                       .sort((a, b) => (a.jobId < b.jobId ? 1 : -1))[0];
+                    if (job?.state === "completed") doneJob = job;
                     const artifact = job?.artifacts.find((a) => a.kind === "scenecuts");
                     if (job && artifact && job.state === "completed") {
                       const data = await readReviewBytes(
@@ -367,7 +376,20 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                   }
                   if (!doc) throw new Error("分析尚未生成切点报告，请稍后再试。");
                   setSceneCuts({ assetId: asset.assetId, doc });
-                  setNotice(`场景切点 ${doc.cuts.length} 个${doc.truncated ? "（已截断）" : ""} · 阈值 ${doc.threshold ?? "0.3"}`);
+                  const waveArtifact = doneJob?.artifacts.find((a) => a.kind === "waveform");
+                  if (waveArtifact) {
+                    const waveData = await readReviewBytes(
+                      { projectId: project.projectId, assetId: waveArtifact.artifactId, revision: waveArtifact.revision, blob: waveArtifact.blob },
+                      readChunk,
+                      digestSource,
+                      new AbortController().signal,
+                      "waveform",
+                    );
+                    setWaveform({ assetId: asset.assetId, doc: JSON.parse(new TextDecoder().decode(waveData)) as WaveformDoc });
+                  } else {
+                    setWaveform(null);
+                  }
+                  setNotice(`场景切点 ${doc.cuts.length} 个${doc.truncated ? "（已截断）" : ""} · 阈值 ${doc.threshold ?? "0.3"}${waveArtifact ? " · 已生成波形" : ""}`);
                 })}
               {sceneCuts && sceneCuts.assetId === asset.assetId && (
                 <View style={row}>
@@ -384,6 +406,14 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                       <Text style={styles.actionText}>{`${c.ptsTime}s · ${c.score}`}</Text>
                     </DeskControl>
                   ))}
+                </View>
+              )}
+              {waveform && waveform.assetId === asset.assetId && (
+                <View style={row}>
+                  <Text style={muted}>波形:</Text>
+                  <Text style={muted}>
+                    {waveform.doc.buckets.map((b) => " ▁▂▃▄▅▆▇█"[Math.min(7, Math.max(0, Math.floor(Number(b) * 8)))] ?? " ").join("")}
+                  </Text>
                 </View>
               )}
             </DeskControl>

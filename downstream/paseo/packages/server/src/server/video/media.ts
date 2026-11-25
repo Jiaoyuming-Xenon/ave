@@ -74,6 +74,30 @@ interface SceneCutDocument {
   stats: { maxScore: string; meanScore: string };
 }
 
+interface WaveformDocument {
+  schemaVersion: "video.waveform/v1";
+  reportId: string;
+  assetId: string;
+  sourceSha256: string;
+  indexSha256: string;
+  streamUid: string;
+  sampleRate: number;
+  bucketMs: number;
+  durationAnalyzedMs: string;
+  truncated: boolean;
+  buckets: string[];
+}
+
+/** RMS level of one bucket of 16-bit PCM samples, normalized to 0..1. */
+function waveformBucket(samples: Int16Array, offset: number, length: number): string {
+  let sum = 0;
+  for (let i = offset; i < offset + length; i++) {
+    const v = samples[i]! / 32768;
+    sum += v * v;
+  }
+  return Math.sqrt(sum / length).toFixed(4);
+}
+
 /** Snap a detected cut to the whole-frame grid of the source average rate (milliseconds). */
 function alignToFrameMs(stream: StreamDescriptor, frameIndex: number, ptsTime: string): Rational {
   const rate = stream.averageRate;
@@ -581,6 +605,12 @@ export class MediaService {
     }));
     const scene = await this.sceneCutReport(asset, jobId, signal);
     this.throwIfCancelled(signal);
+    this.store.updateJob(projectId, jobId, (current) => ({
+      ...current,
+      phaseDetail: "running deterministic waveform pass",
+    }));
+    const waveform = await this.waveformReport(asset, jobId, signal);
+    this.throwIfCancelled(signal);
 
     const support = await this.py
       .support(signal)
@@ -638,6 +668,15 @@ export class MediaService {
         cutCount: scene.doc.cuts.length,
         truncated: scene.doc.truncated,
       },
+      waveform: waveform
+        ? {
+            artifactId: `${jobId}:waveform`,
+            sha256: waveform.blob.sha256,
+            bucketMs: waveform.doc.bucketMs,
+            bucketCount: waveform.doc.buckets.length,
+            truncated: waveform.doc.truncated,
+          }
+        : null,
     });
     this.throwIfCancelled(signal);
     const artifact = {
@@ -656,16 +695,128 @@ export class MediaService {
       kind: "scenecuts" as const,
       blob: scene.blob,
     };
-    const units = streams.length + 1;
+    const waveArtifact = waveform
+      ? {
+          artifactId: `${jobId}:waveform`,
+          projectId,
+          jobId,
+          revision: job.revision,
+          kind: "waveform" as const,
+          blob: waveform.blob,
+        }
+      : undefined;
+    const units = streams.length + 1 + (waveArtifact ? 1 : 0);
     this.store.updateJob(projectId, jobId, (current) => ({
       ...current,
       state: "completed",
       phaseDetail: "analysis complete",
       progress: { completedUnits: String(units), totalUnits: String(units) },
-      artifacts: [...current.artifacts, artifact, sceneArtifact],
+      artifacts: [...current.artifacts, artifact, sceneArtifact, ...(waveArtifact ? [waveArtifact] : [])],
       error: undefined,
     }));
     return this.store.job(projectId, jobId, worker);
+  }
+
+  /**
+   * Deterministic audio waveform: decode the first audio stream to 8 kHz mono
+   * PCM (bounded to 120 s), then bucket RMS per 100 ms. No model, no pixels.
+   */
+  private async waveformReport(
+    asset: SourceAsset,
+    jobId: string,
+    signal: AbortSignal,
+  ): Promise<{ blob: BlobRef; doc: WaveformDocument } | null> {
+    const audio = asset.streams.find((s) => s.kind === "audio");
+    if (!audio) return null;
+    const rate = 8000;
+    const bucketMs = 100;
+    const maxSeconds = 120;
+    const pcm = await this.runBuffer(
+      this.tools.ffmpeg,
+      [
+        "-nostdin", "-v", "error", "-xerror",
+        "-i", this.cas.pathFor(asset.original),
+        "-map", "0:a:0",
+        "-t", String(maxSeconds),
+        "-ac", "1", "-ar", String(rate),
+        "-f", "s16le", "-",
+      ],
+      signal,
+      maxSeconds * rate * 2 + 4096,
+    );
+    this.throwIfCancelled(signal);
+    const samples = new Int16Array(pcm.buffer, pcm.byteOffset, Math.floor(pcm.length / 2));
+    const per = (rate * bucketMs) / 1000;
+    const buckets: string[] = [];
+    for (let off = 0; off + per <= samples.length; off += per)
+      buckets.push(waveformBucket(samples, off, per));
+    const doc: WaveformDocument = {
+      schemaVersion: "video.waveform/v1",
+      reportId: jobId,
+      assetId: asset.assetId,
+      sourceSha256: asset.original.sha256,
+      indexSha256: asset.presentationIndex.sha256,
+      streamUid: audio.streamUid,
+      sampleRate: rate,
+      bucketMs,
+      durationAnalyzedMs: String(buckets.length * bucketMs),
+      truncated: samples.length >= maxSeconds * rate,
+      buckets,
+    };
+    return { blob: await this.cas.writeJson(doc), doc };
+  }
+
+  private runBuffer(command: string, args: string[], signal: AbortSignal, maxBytes: number): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      if (signal.aborted) throw new EditorError("CANCELLED", "Analysis interrupted");
+      const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
+      const chunks: Buffer[] = [];
+      let total = 0;
+      let stderr = "";
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        child.kill("SIGKILL");
+        reject(new Error("ffmpeg timed out"));
+      }, 120_000);
+      const onAbort = () => {
+        if (settled) return;
+        settled = true;
+        child.kill("SIGKILL");
+        reject(new EditorError("CANCELLED", "Analysis interrupted"));
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+      child.stdout.on("data", (chunk: Buffer) => {
+        if (settled) return;
+        total += chunk.length;
+        if (total > maxBytes) {
+          settled = true;
+          child.kill("SIGKILL");
+          reject(new EditorError("INVALID_ARGUMENT", "Decoded audio exceeds the analysis budget"));
+          return;
+        }
+        chunks.push(chunk);
+      });
+      child.stderr.on("data", (chunk: Buffer) => {
+        stderr += chunk.toString("utf8");
+      });
+      child.on("error", (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      });
+      child.on("close", (code) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        signal.removeEventListener("abort", onAbort);
+        if (code === 0) resolve(Buffer.concat(chunks));
+        else reject(new EditorError("WORKER_FAILED", stderr.trim().slice(0, 500) || `ffmpeg exited ${code}`));
+      });
+    });
   }
 
   /**

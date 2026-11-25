@@ -288,7 +288,7 @@ export const ArtifactRefSchema = z
     projectId: id,
     jobId: id,
     revision: uint,
-    kind: z.enum(["probe", "proxy", "mask", "candidate", "export", "qa", "manifest", "contact", "scenecuts"]),
+    kind: z.enum(["probe", "proxy", "mask", "candidate", "export", "qa", "manifest", "contact", "scenecuts", "waveform"]),
     blob: BlobRefSchema,
   })
   .strict();
