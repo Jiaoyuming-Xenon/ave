@@ -44,6 +44,7 @@
 - VFR 成品的 daemon 验收用例：`editor.e2e.test.ts` 在原有上传、三次独立审批和成品分块下载流程上增加 VFR 样片。校验源索引、预览及下载成品的每个视频 PTS，而不仅是帧数/总时长。独立 FFmpeg 对照实测：25 Hz 网格删去序号 5 后，1 s 半开裁剪的 preview/final 均保留 24 帧，0.160 s 后下一帧是 0.240 s；两条编码路径时长均为 1 s。本轮 server typecheck 和定向 lint 通过，VFR 定向 Vitest 在启动前被权限模式拦截，未观察到实际 daemon 交付这份样片。
 - 成品审片与交付：工作台可请求由 final 候选派生的 640×360 代理，导出审批记录绑定候选哈希、代理和 QA；播放不交付，用户需单独批准。新增 Chrome 下载回读、成品 hash 与解码断言。五文件 lint 已通过；本轮 Chrome 和类型检查在启动前被策略拦截，未观察到最终界面验收。
 - 接续实测：服务端类型检查通过。真实 daemon 上的 `editor.e2e.test.ts` 与 `job-supervisor.test.ts` 共 14 个用例通过，覆盖 VFR 成品交付、音轨 QA 和解码任务控制。独立 Chrome 上的 `edit-desk.browser.e2e.test.ts` 三个场景通过，包含本机文件选择、拒绝预览和完整审片交付。成品审片代理实际播放后，导出审批仍为 pending。单独批准导出后，从工作台下载的 MP4 完整解码为 160×90、32 帧 H.264 和 48 kHz AAC，两流从零开始，均长 1.28 秒。源文件哈希保持一致，成品哈希等于审批绑定值。浏览器下载的 JSON 清单与该审批、版本、方案及成品哈希一致。
+- Linux x86_64 开发包：使用锁定的 Electron 44.2.0、Paseo 桌面主进程、生产 renderer 和重新构建的 daemon 生成 `packages/desktop/release/Paseo-x86_64.AppImage`，SHA-256 为 `bfbb59f128bdbeb31f8c29a03b96d5f0a12f1e94d1101ced7119b98e5a1bea9f`。Metro 默认配置在转换 11 MiB 的协议校验模块时耗尽 Node 堆；在 app 目录以 `NODE_OPTIONS=--max-old-space-size=6144 PASEO_WEB_PLATFORM=electron EXPO_OFFLINE=1 npx --no-install expo export --platform web --max-workers 1` 完成 production export。解包后的插件工作台与根仓库源码逐字节相同。在独立 Xvfb 中从 AppImage 以 `--appimage-extract-and-run` 启动，包内 CLI 冷启动、真实窗口的 renderer/preload、桌面启动的 daemon、内置插件及终端回读全部通过。此开发包使用上游 Paseo 名称和更新源；包内视频编辑全流程、干净机器上的媒体依赖、更新和签名仍待验证。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
