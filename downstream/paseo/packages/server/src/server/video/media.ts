@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -673,11 +673,43 @@ export class MediaService {
         ? "[vcat]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1[vout]"
         : "[vcat]null[vout]",
     );
+    let vOut = "[vout]";
+    let subDir: string | undefined;
+    if (plan.subtitleOperations.length) {
+      // Burn-in cues are written to an SRT in record time and rendered after the
+      // concat/scale so cue ranges refer to the output timeline, not the source.
+      const cues = plan.subtitleOperations.slice().sort((a, b) =>
+        BigInt(a.range.start.num) * BigInt(b.range.start.den) <
+        BigInt(b.range.start.num) * BigInt(a.range.start.den) ? -1 : 1,
+      );
+      const fmt = (s: number) => {
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = Math.floor(s % 60);
+        const ms = Math.round((s - Math.floor(s)) * 1000);
+        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
+      };
+      const srt = cues
+        .map((cue, i) => {
+          const start = Number(rationalSeconds(cue.range.start));
+          const end = start + Number(rationalSeconds(cue.range.duration));
+          return `${i + 1}\n${fmt(start)} --> ${fmt(end)}\n${cue.text.replace(/\s+/g, " ").trim()}\n`;
+        })
+        .join("\n");
+      subDir = await mkdtemp(path.join(tmpdir(), "video-subs-"));
+      const srtPath = path.join(subDir, "cues.srt");
+      await writeFile(srtPath, srt, "utf8");
+      const escaped = srtPath.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "'\\''");
+      filters.push(
+        `[vout]subtitles='${escaped}':force_style='FontSize=18,Outline=1,BackColour=&H80000000&'[vfinal]`,
+      );
+      vOut = "[vfinal]";
+    }
     args.push(
       "-filter_complex",
       filters.join(";"),
       "-map",
-      "[vout]",
+      vOut,
       "-fps_mode",
       "vfr",
       ...(kind === "preview" ? ["-enc_time_base:v", "filter"] : []),
@@ -689,7 +721,11 @@ export class MediaService {
     if (audio[0])
       args.push("-map", "[acat]", "-c:a", "aac", "-ar", "48000");
     args.push("-movflags", "+faststart", output);
-    await this.spawnChecked(this.tools.ffmpeg, args, signal);
+    try {
+      await this.spawnChecked(this.tools.ffmpeg, args, signal);
+    } finally {
+      if (subDir) await rm(subDir, { recursive: true, force: true });
+    }
   }
 
   async verifyCandidateDecode(candidate: BlobRef, signal: AbortSignal): Promise<void> {

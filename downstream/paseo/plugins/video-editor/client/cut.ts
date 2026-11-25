@@ -7,11 +7,18 @@ function milliseconds(value: string): bigint {
   return BigInt(match[1]!) * 1000n + BigInt((match[2] ?? "").padEnd(3, "0"));
 }
 
+export interface CaptionCue {
+  text: string;
+  start: string;
+  end: string;
+}
+
 export function proposeCut(
   project: ProjectSnapshot,
   assetId: string,
   start: string,
   end: string,
+  caption?: CaptionCue,
 ): EditPlanDraftV1 {
   const asset = project.assets.find((a) => a.assetId === assetId);
   const stream = asset?.streams.find((s) => s.kind === "video");
@@ -46,7 +53,23 @@ export function proposeCut(
     transformOperations: [],
     audioOperations: [],
     transitionOperations: [],
-    subtitleOperations: [],
+    subtitleOperations: caption
+      ? [
+          {
+            opId: "sub-1",
+            order: "1",
+            trackId: "s1",
+            clipId: "clip-1",
+            cueId: "cue-1",
+            range: {
+              start: { num: milliseconds(caption.start).toString(), den: "1000" },
+              duration: { num: (milliseconds(caption.end) - milliseconds(caption.start)).toString(), den: "1000" },
+            },
+            text: caption.text.slice(0, 16_384),
+            mode: "burn-in" as const,
+          },
+        ]
+      : [],
     generationRequests: [],
     qaRequirements: [],
     externalDestinations: [],

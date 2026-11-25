@@ -22,7 +22,6 @@ export function assertRenderablePreview(draft: EditPlanDraftV1): void {
     draft.transformOperations,
     draft.audioOperations,
     draft.transitionOperations,
-    draft.subtitleOperations,
     draft.generationRequests,
     draft.qaRequirements,
     draft.externalDestinations,
@@ -32,6 +31,11 @@ export function assertRenderablePreview(draft: EditPlanDraftV1): void {
     unsupported.some((ops) => ops.length > 0)
   )
     editorFailure("CAPABILITY_UNAVAILABLE", "This preview profile supports FFmpeg trims only");
+  if (draft.subtitleOperations.length > 64 || draft.subtitleOperations.some((op) => op.mode !== "burn-in"))
+    editorFailure(
+      "CAPABILITY_UNAVAILABLE",
+      "This preview profile supports burn-in subtitles only (max 64 cues)",
+    );
   const ops = draft.trimOperations;
   if (ops.length === 0)
     editorFailure("CAPABILITY_UNAVAILABLE", "At least one trim operation is required");
