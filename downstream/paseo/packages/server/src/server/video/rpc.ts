@@ -242,7 +242,7 @@ export class EditorRpcService {
     if (length > 262_144n)
       editorFailure("INVALID_ARGUMENT", "A single media chunk cannot exceed 256 KiB");
     const { projectId, assetId, revision } = input;
-    const ref = (() => {
+    const ref = await (async () => {
       if (assetId.endsWith(":review-proxy")) return this.editor.store.finalReviewProxy(projectId, assetId, revision, principal).blob;
       if (assetId.endsWith(":candidate")) return this.previewForReview(input, principal);
       if (assetId.startsWith("contact:")) {
