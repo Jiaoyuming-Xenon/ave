@@ -524,7 +524,7 @@ test("a paired viewer can read only its project and loses access when revoked", 
         requestId: "denied",
         title: "C",
       }),
-    ).rejects.toThrow(/access denied/i);
+    ).rejects.toThrow(/cannot modify this video project/i);
     await expect(viewer.invokePluginRpc("other-plugin", "read", {})).rejects.toThrow(
       /access denied/i,
     );
@@ -534,6 +534,81 @@ test("a paired viewer can read only its project and loses access when revoked", 
     expect(
       ProjectSnapshotSchema.parse(await invoke("get_project", { projectId: a.projectId })).title,
     ).toBe("A");
+  } finally {
+    try {
+      await Promise.all(clients.map((client) => client.close()));
+    } finally {
+      await daemon.close();
+    }
+  }
+}, 30_000);
+
+test("a paired operator reaches approval and job controls but never device management", async () => {
+  const daemon = await createTestPaseoDaemon({ mcpEnabled: false });
+  const url = `ws://127.0.0.1:${daemon.port}/ws`;
+  const owner = new DaemonClient({ url });
+  const clients = [owner];
+  try {
+    await owner.connect();
+    const invoke = (method: string, input: unknown) =>
+      owner.invokePluginRpc("video-editor", `video.v1.${method}`, input);
+    const project = ProjectSnapshotSchema.parse(
+      await invoke("create_project", { requestId: "create-op", title: "Ops" }),
+    );
+    const invitation = await invoke("create_invitation", {
+      projectId: project.projectId,
+      role: "operator",
+    });
+    const issued = await invoke("redeem_invitation", invitation);
+    if (
+      !issued ||
+      typeof issued !== "object" ||
+      !("deviceId" in issued) ||
+      typeof issued.deviceId !== "string" ||
+      !("credential" in issued) ||
+      typeof issued.credential !== "string"
+    ) {
+      throw new Error("No device credential returned");
+    }
+    const operator = new DaemonClient({
+      url,
+      videoDevice: { deviceId: issued.deviceId, token: issued.credential },
+      clientId: "operator",
+    });
+    clients.push(operator);
+    await operator.connect();
+    expect(operator.getLastServerInfoMessage()?.permissions).toEqual(["video.read", "video.write"]);
+    const call = (method: string, input: unknown) =>
+      operator.invokePluginRpc("video-editor", `video.v1.${method}`, input);
+    // The role gate is passed: the store answers with a domain error for the missing subject,
+    // not a channel-level access denial.
+    await expect(
+      call("decide_approval", {
+        requestId: "op-approve",
+        approvalId: "missing",
+        expectedRevision: project.revision,
+        decision: "approve",
+      }),
+    ).rejects.toThrow(/does not exist/i);
+    await expect(
+      call("control_job", {
+        projectId: project.projectId,
+        jobId: "missing",
+        requestId: "op-cancel",
+        action: "cancel",
+      }),
+    ).rejects.toThrow(/does not exist/i);
+    // Owner-only device management stays denied for the operator.
+    await expect(
+      call("create_invitation", { projectId: project.projectId, role: "viewer" }),
+    ).rejects.toThrow(/only the project owner/i);
+    await expect(call("revoke_device", { deviceId: issued.deviceId })).rejects.toThrow(
+      /only the project owner/i,
+    );
+    expect(await operator.getVideoProjectSummary(project.projectId)).toMatchObject({
+      projectId: project.projectId,
+      title: "Ops",
+    });
   } finally {
     try {
       await Promise.all(clients.map((client) => client.close()));

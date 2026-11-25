@@ -55,7 +55,7 @@ import {
   type WSOutboundMessage,
   wrapSessionMessage,
 } from "./messages.js";
-import { asUint8Array, decodeBinaryFrame } from "@getpaseo/protocol/binary-frames/index";
+import { asUint8Array, decodeBinaryFrame, encodePluginOutputFrame } from "@getpaseo/protocol/binary-frames/index";
 import type { TerminalActivity } from "@getpaseo/protocol/terminal-activity";
 import { MAX_WEBSOCKET_MESSAGE_BYTES } from "@getpaseo/protocol/websocket-message-limit";
 import type { HostnamesConfig } from "./hostnames.js";
@@ -134,6 +134,7 @@ import { CLIENT_CAPS } from "@getpaseo/protocol/client-capabilities";
 
 import type { EditorPrincipal } from "#video-editor/contracts/v1";
 import type { EditorService } from "./video/service.js";
+import { describeEditorError } from "./video/errors.js";
 import type { SecurityMode } from "@getpaseo/relay/e2ee";
 import type { BrowserToolsBroker } from "./browser-tools/broker.js";
 import type { DaemonRuntimeConfig } from "./session/daemon/daemon-session.js";
@@ -573,13 +574,24 @@ function requireWebSocketServices(params: {
 }
 
 /**
+ * An isolated video device socket. It never attaches to a daemon Session; every request is
+ * re-authorized against the access store, and revocation closes the socket immediately.
+ */
+interface VideoReaderState {
+  deviceId: string;
+  /** Hello declared plugin_binary_payloads; binary media frames are only sent to such clients. */
+  binaryPayloads: boolean;
+}
+
+/**
  * WebSocket server that only accepts sockets + parses/forwards messages to the session layer.
  */
 export class VoiceAssistantWebSocketServer {
   private readonly logger: pino.Logger;
   private readonly wss: WebSocketServer;
   private readonly hostLinks = new Map<WebSocketLike, DaemonLinkEndpoint>();
-  private readonly videoReaders = new Map<WebSocketLike, string>();
+  private readonly videoReaders = new Map<WebSocketLike, VideoReaderState>();
+  private unsubscribeVideoRevocation: (() => void) | null = null;
   private readonly pendingConnections: Map<WebSocketLike, PendingConnection> = new Map();
   private readonly sessions: Map<WebSocketLike, SessionConnection> = new Map();
   private readonly socketIdentities: Map<WebSocketLike, WebSocketConnectionIdentity> = new Map();
@@ -731,6 +743,18 @@ export class VoiceAssistantWebSocketServer {
     private readonly editorService?: EditorService,
   ) {
     this.logger = logger.child({ module: "websocket-server" });
+    this.unsubscribeVideoRevocation =
+      this.editorService?.access.onRevoke((deviceId) => {
+        for (const [ws, reader] of this.videoReaders) {
+          if (reader.deviceId !== deviceId) continue;
+          this.videoReaders.delete(ws);
+          try {
+            ws.close(1008, "Video device revoked");
+          } catch {
+            // The transport may already be closed.
+          }
+        }
+      }) ?? null;
     this.workspaceSetupRuntime = workspaceSetupRuntime;
     this.workspaceArchiveOperations = resolveWorkspaceArchiveOperations(workspaceArchiveOperations);
     this.advertiseDaemonStatusRpc = wsConfig.daemonStatusRpc !== false;
@@ -1291,6 +1315,8 @@ export class VoiceAssistantWebSocketServer {
     this.providerSnapshotManager.destroy();
     await this.checkoutDiffManager.dispose();
     await this.workspaceGitService.dispose();
+    this.unsubscribeVideoRevocation?.();
+    this.unsubscribeVideoRevocation = null;
     this.videoReaders.clear();
     this.pendingConnections.clear();
     this.sessions.clear();
@@ -1861,11 +1887,15 @@ export class VoiceAssistantWebSocketServer {
   ): Promise<void> {
     this.clearPendingConnection(ws);
     const { identity } = pending;
+    // Paired devices reach the daemon either directly over loopback (desktop-side tooling) or
+    // through the E2E relay (phones). Transport is server-side metadata; a routed hello on a
+    // direct socket stays rejected. Producer and reserved plugin sockets are never devices.
+    const viaLoopback =
+      identity.transport === "direct" && identity.peer === "loopback" && !message.routed;
+    const viaRelay = identity.transport === "relay";
     if (
       !pending.admission &&
-      identity.transport === "direct" &&
-      identity.peer === "loopback" &&
-      !message.routed &&
+      (viaLoopback || viaRelay) &&
       !message.producer &&
       !isPluginClientId(message.clientId.trim()) &&
       (!message.sessionPermissions || message.sessionPermissions.includes("video.read"))
@@ -1876,14 +1906,18 @@ export class VoiceAssistantWebSocketServer {
           credential.token,
         );
         if (principal) {
-          this.videoReaders.set(ws, principal.principalId);
+          this.videoReaders.set(ws, {
+            deviceId: principal.principalId,
+            binaryPayloads: message.capabilities?.[CLIENT_CAPS.pluginBinaryPayloads] === true,
+          });
           this.sendVideoReply(ws, {
             type: "status",
             payload: {
               status: "server_info",
               serverId: this.serverId,
               protocolVersion: WS_PROTOCOL_VERSION,
-              permissions: ["video.read"],
+              permissions:
+                principal.role === "operator" ? ["video.read", "video.write"] : ["video.read"],
               features: { videoProjectSummary: true },
             },
           });
@@ -2710,14 +2744,17 @@ export class VoiceAssistantWebSocketServer {
   private sendVideoReply(
     ws: WebSocketLike,
     message:
-      | Extract<SessionOutboundMessage, { type: "video.project.summary.response" | "rpc_error" }>
+      | Extract<
+          SessionOutboundMessage,
+          { type: "video.project.summary.response" | "rpc_error" | "plugin.rpc.invoke.response" }
+        >
       | {
           type: "status";
           payload: {
             status: "server_info";
             serverId: string;
             protocolVersion: number;
-            permissions: ["video.read"];
+            permissions: ("video.read" | "video.write")[];
             features: { videoProjectSummary: true };
           };
         },
@@ -2732,8 +2769,18 @@ export class VoiceAssistantWebSocketServer {
     );
   }
 
+  /** Binary plugin RPC output for a device socket; the reader never joins a Session delivery. */
+  private sendVideoBinary(ws: WebSocketLike, frame: Uint8Array): void {
+    if (!this.videoReaders.has(ws)) return;
+    const bytes = outboundFrameByteLength(frame);
+    if (!this.ensureOutboundCapacity(ws, bytes)) return;
+    this.sendFrameToClient(ws, frame, bytes, () =>
+      this.runtimeMetrics.recordOutboundBinaryFrame(ws.bufferedAmount),
+    );
+  }
+
   // Reader sockets never attach to a daemon Session, host link or broadcast subscription.
-  private handleVideoReader(ws: WebSocketLike, deviceId: string, buffer: Buffer): void {
+  private handleVideoReader(ws: WebSocketLike, reader: VideoReaderState, buffer: Buffer): void {
     if (buffer.byteLength > 16384) {
       ws.close(1008, "Invalid video request");
       return;
@@ -2753,7 +2800,7 @@ export class VoiceAssistantWebSocketServer {
     const message = parsed.data;
     const editor = this.editorService;
     try {
-      const principal = editor?.access.activePrincipal(deviceId);
+      const principal = editor?.access.activePrincipal(reader.deviceId);
       if (principal && editor) {
         if (message.type === "ping") {
           this.sendToClient(ws, { type: "pong" });
@@ -2769,6 +2816,62 @@ export class VoiceAssistantWebSocketServer {
             type: "video.project.summary.response",
             payload: { requestId, ...summary },
           });
+          return;
+        }
+        if (
+          message.type === "session" &&
+          message.message.type === "plugin.rpc.invoke.request" &&
+          message.message.pluginId === "video-editor"
+        ) {
+          const request = message.message;
+          // The same role/scope rules as the desktop session: viewer reads, operator approves and
+          // controls jobs, neither manages devices or imports. Project scope is enforced again by
+          // the store on every call.
+          void editor.rpc
+            .invoke(request.method, request.input, {
+              principalId: principal.principalId,
+              permissions: [],
+              editorPrincipal: principal,
+            })
+            .then((output) => {
+              if (!this.videoReaders.has(ws)) return;
+              try {
+                editor.access.activePrincipal(reader.deviceId);
+              } catch {
+                // Revoked while the call ran; the revoke listener already closed the socket.
+                return;
+              }
+              if (output instanceof Uint8Array) {
+                if (!reader.binaryPayloads) {
+                  this.sendVideoReply(ws, {
+                    type: "rpc_error",
+                    payload: {
+                      requestId: request.requestId,
+                      error: "Update the client to receive binary media",
+                      code: "CAPABILITY_UNAVAILABLE",
+                    },
+                  });
+                  return;
+                }
+                this.sendVideoBinary(ws, encodePluginOutputFrame(request.requestId, output));
+                return;
+              }
+              this.sendVideoReply(ws, {
+                type: "plugin.rpc.invoke.response",
+                payload: { requestId: request.requestId, output },
+              });
+            })
+            .catch((error: unknown) => {
+              const described = describeEditorError(error);
+              this.sendVideoReply(ws, {
+                type: "rpc_error",
+                payload: {
+                  requestId: request.requestId,
+                  error: described.sanitizedDetail,
+                  code: described.code,
+                },
+              });
+            });
           return;
         }
       }

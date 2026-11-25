@@ -31,6 +31,7 @@ export class EditorAccessStore {
   private document: AccessDocument = { version: 1, devices: [], invitations: [] };
   private readonly file: string;
   private writing = Promise.resolve();
+  private readonly revokeListeners = new Set<(deviceId: string) => void>();
 
   constructor(root: string) {
     this.file = path.join(root, "access.json");
@@ -121,6 +122,15 @@ export class EditorAccessStore {
     if (!device) editorFailure("PROJECT_NOT_FOUND", "The device does not exist");
     device.revokedAt = new Date().toISOString();
     await this.persist();
+    for (const listener of this.revokeListeners) listener(deviceId);
+  }
+
+  /** Live channels (e.g. the isolated video reader socket) terminate as soon as a device is revoked. */
+  onRevoke(listener: (deviceId: string) => void): () => void {
+    this.revokeListeners.add(listener);
+    return () => {
+      this.revokeListeners.delete(listener);
+    };
   }
 
   private async persist(): Promise<void> {

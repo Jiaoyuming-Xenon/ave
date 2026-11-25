@@ -6,6 +6,8 @@
 /references/
 # Runnable local checkout; the publishable source delta lives in downstream/paseo/.
 /vendor/paseo/
+# Local tooling binaries (e.g. a newer static FFmpeg for the media tests).
+/.tools/
 
 # Local session evidence and large source material.
 /1.txt
