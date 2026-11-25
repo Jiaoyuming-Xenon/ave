@@ -248,5 +248,251 @@
     "schema": "ApprovalRequest",
     "valid": false,
     "value": { "approvalId": "approval", "projectId": "proj", "subjectType": "bogus", "subjectId": "plan", "subjectRevision": "1", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "requiredInputs": [], "diffSummary": { "intent": "trim", "operationCount": 1, "summary": "single trim" }, "generationCostCapMicros": "100", "externalDestinations": [], "status": "pending", "expiresAt": "2026-11-25T00:00:00Z" }
+  },
+  {
+    "name": "editor principal scoped viewer",
+    "schema": "EditorPrincipal",
+    "valid": true,
+    "value": { "principalId": "device-1", "role": "viewer", "projectIds": ["p1"] }
+  },
+  {
+    "name": "editor principal owner has null project scope",
+    "schema": "EditorPrincipal",
+    "valid": true,
+    "value": { "principalId": "owner", "role": "owner", "projectIds": null }
+  },
+  {
+    "name": "editor principal role must be known",
+    "schema": "EditorPrincipal",
+    "valid": false,
+    "value": { "principalId": "device-1", "role": "admin", "projectIds": ["p1"] }
+  },
+  {
+    "name": "editor error carries code and retryable flag",
+    "schema": "EditorError",
+    "valid": true,
+    "value": { "code": "QA_FAILED", "retryable": true, "sanitizedDetail": "Candidate audio tracks differ" }
+  },
+  {
+    "name": "editor error retryable must be boolean",
+    "schema": "EditorError",
+    "valid": false,
+    "value": { "code": "QA_FAILED", "retryable": "yes", "sanitizedDetail": "x" }
+  },
+  {
+    "name": "asset stream ref binds content hash and probe revision",
+    "schema": "AssetStreamRef",
+    "valid": true,
+    "value": { "assetId": "asset", "assetContentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "streamUid": "stream:0", "probeRevision": "1" }
+  },
+  {
+    "name": "asset stream ref content hash must be sha256",
+    "schema": "AssetStreamRef",
+    "valid": false,
+    "value": { "assetId": "asset", "assetContentHash": "short", "streamUid": "stream:0", "probeRevision": "1" }
+  },
+  {
+    "name": "job state rendering preview is known",
+    "schema": "JobState",
+    "valid": true,
+    "value": "rendering_preview"
+  },
+  {
+    "name": "job state must be a known lifecycle state",
+    "schema": "JobState",
+    "valid": false,
+    "value": "bogus"
+  },
+  {
+    "name": "editor role operator is known",
+    "schema": "EditorRole",
+    "valid": true,
+    "value": "operator"
+  },
+  {
+    "name": "editor role must be viewer operator or owner",
+    "schema": "EditorRole",
+    "valid": false,
+    "value": "admin"
+  },
+  {
+    "name": "stream descriptor video h264",
+    "schema": "StreamDescriptor",
+    "valid": true,
+    "value": { "streamUid": "stream:0", "streamIndex": 0, "kind": "video", "codec": "h264", "timeBase": { "num": "1", "den": "30" }, "disposition": {} }
+  },
+  {
+    "name": "stream descriptor kind must be known",
+    "schema": "StreamDescriptor",
+    "valid": false,
+    "value": { "streamUid": "stream:0", "streamIndex": 0, "kind": "bogus", "codec": "h264", "timeBase": { "num": "1", "den": "30" }, "disposition": {} }
+  },
+  {
+    "name": "read asset chunk metadata binds identity and version",
+    "schema": "ReadAssetChunkMetadata",
+    "valid": true,
+    "value": { "offset": "0", "bytesLength": "4", "totalBytes": "10", "revision": "1", "chunkSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "assetSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "protocolVersion": "1" }
+  },
+  {
+    "name": "read asset chunk metadata protocol version must be 1",
+    "schema": "ReadAssetChunkMetadata",
+    "valid": false,
+    "value": { "offset": "0", "bytesLength": "4", "totalBytes": "10", "revision": "1", "chunkSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "assetSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "protocolVersion": "2" }
+  },
+  {
+    "name": "video tool call get job status",
+    "schema": "VideoToolCall",
+    "valid": true,
+    "value": { "protocolVersion": "1", "toolCallId": "call", "tool": "get_job_status", "args": { "jobId": "job" } }
+  },
+  {
+    "name": "video tool call rejects an unknown tool",
+    "schema": "VideoToolCall",
+    "valid": false,
+    "value": { "protocolVersion": "1", "toolCallId": "call", "tool": "bash", "args": {} }
+  },
+  {
+    "name": "commit upload request binds final hash",
+    "schema": "CommitUploadRequest",
+    "valid": true,
+    "value": { "requestId": "r1", "uploadId": "u", "finalSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+  },
+  {
+    "name": "commit upload request final hash must be sha256",
+    "schema": "CommitUploadRequest",
+    "valid": false,
+    "value": { "requestId": "r1", "uploadId": "u", "finalSha256": "short" }
+  },
+  {
+    "name": "approval grant preview purpose",
+    "schema": "ApprovalGrant",
+    "valid": true,
+    "value": { "grantId": "g", "approvalId": "a", "projectId": "p", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "approvedByDeviceId": "owner", "approvedAt": "2026-11-25T00:00:00Z", "expiresAt": "2026-11-26T00:00:00Z" }
+  },
+  {
+    "name": "approval grant purpose excludes input",
+    "schema": "ApprovalGrant",
+    "valid": false,
+    "value": { "grantId": "g", "approvalId": "a", "projectId": "p", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "input", "approvedByDeviceId": "owner", "approvedAt": "2026-11-25T00:00:00Z", "expiresAt": "2026-11-26T00:00:00Z" }
+  },
+  {
+    "name": "write upload chunk binds offset length and hash",
+    "schema": "WriteUploadChunk",
+    "valid": true,
+    "value": { "requestId": "r1", "uploadId": "u", "offset": "0", "length": "4", "chunkSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+  },
+  {
+    "name": "write upload chunk hash must be sha256",
+    "schema": "WriteUploadChunk",
+    "valid": false,
+    "value": { "requestId": "r1", "uploadId": "u", "offset": "0", "length": "4", "chunkSha256": "short" }
+  },
+  {
+    "name": "upload request addresses project and upload",
+    "schema": "UploadRequest",
+    "valid": true,
+    "value": { "projectId": "p", "uploadId": "u" }
+  },
+  {
+    "name": "upload request requires an upload id",
+    "schema": "UploadRequest",
+    "valid": false,
+    "value": { "projectId": "p" }
+  },
+  {
+    "name": "job request addresses project and job",
+    "schema": "JobRequest",
+    "valid": true,
+    "value": { "projectId": "p", "jobId": "j" }
+  },
+  {
+    "name": "job request requires a job id",
+    "schema": "JobRequest",
+    "valid": false,
+    "value": { "projectId": "p" }
+  },
+  {
+    "name": "create job result wraps a snapshot and dedup flag",
+    "schema": "CreateJobResult",
+    "valid": true,
+    "value": { "job": { "jobId": "job", "projectId": "p", "revision": "1", "planHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "kind": "preview", "state": "draft", "artifacts": [] }, "deduplicated": false }
+  },
+  {
+    "name": "create job result dedup flag must be boolean",
+    "schema": "CreateJobResult",
+    "valid": false,
+    "value": { "job": { "jobId": "job", "projectId": "p", "revision": "1", "planHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "kind": "preview", "state": "draft", "artifacts": [] }, "deduplicated": "no" }
+  },
+  {
+    "name": "events result empty with snapshot flag",
+    "schema": "EventsResult",
+    "valid": true,
+    "value": { "events": [], "snapshotRequired": false }
+  },
+  {
+    "name": "events result snapshot flag must be boolean",
+    "schema": "EventsResult",
+    "valid": false,
+    "value": { "events": [], "snapshotRequired": "no" }
+  },
+  {
+    "name": "accepted edit plan is a proposed single trim",
+    "schema": "AcceptedEditPlan",
+    "valid": true,
+    "value": { "schemaVersion": "video.edit-plan/v1", "projectId": "proj", "baseTimelineRevision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "intent": "trim the middle", "trimOperations": [{ "opId": "op", "order": "1", "trackId": "track", "clipId": "clip", "source": { "assetId": "asset", "assetContentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "streamUid": "stream:0", "probeRevision": "1" }, "sourceRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } }, "recordRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } } }], "transformOperations": [], "audioOperations": [], "transitionOperations": [], "subtitleOperations": [], "generationRequests": [], "qaRequirements": [], "externalDestinations": [], "maxCostMicros": "100", "deterministicBackendId": "ffmpeg", "planId": "plan", "revision": "1", "runId": "run", "idempotencyKey": "key", "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "status": "proposed" }
+  },
+  {
+    "name": "accepted edit plan status must be proposed",
+    "schema": "AcceptedEditPlan",
+    "valid": false,
+    "value": { "schemaVersion": "video.edit-plan/v1", "projectId": "proj", "baseTimelineRevision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "intent": "trim", "trimOperations": [], "transformOperations": [], "audioOperations": [], "transitionOperations": [], "subtitleOperations": [], "generationRequests": [], "qaRequirements": [], "externalDestinations": [], "maxCostMicros": "100", "deterministicBackendId": "ffmpeg", "planId": "plan", "revision": "1", "runId": "run", "idempotencyKey": "key", "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "status": "accepted" }
+  },
+  {
+    "name": "project snapshot empty collections",
+    "schema": "ProjectSnapshot",
+    "valid": true,
+    "value": { "protocolVersion": "1", "projectId": "p", "title": "T", "revision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "assets": [], "plans": [], "approvals": [], "jobs": [], "latestSeq": "0" }
+  },
+  {
+    "name": "project snapshot protocol version must be 1",
+    "schema": "ProjectSnapshot",
+    "valid": false,
+    "value": { "protocolVersion": "2", "projectId": "p", "title": "T", "revision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "assets": [], "plans": [], "approvals": [], "jobs": [], "latestSeq": "0" }
+  },
+  {
+    "name": "decide approval result returns approval and grant",
+    "schema": "DecideApprovalResult",
+    "valid": true,
+    "value": { "approval": { "approvalId": "approval", "projectId": "proj", "subjectType": "edit_plan", "subjectId": "plan", "subjectRevision": "1", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "requiredInputs": [{ "type": "asset", "id": "asset", "revision": "1", "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }], "diffSummary": { "intent": "trim", "operationCount": 1, "summary": "single trim" }, "generationCostCapMicros": "100", "externalDestinations": [], "status": "approved", "expiresAt": "2026-11-25T00:00:00Z" }, "grant": { "grantId": "g", "approvalId": "approval", "projectId": "proj", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "approvedByDeviceId": "owner", "approvedAt": "2026-11-25T00:00:00Z", "expiresAt": "2026-11-26T00:00:00Z" } }
+  },
+  {
+    "name": "decide approval result approval must be complete",
+    "schema": "DecideApprovalResult",
+    "valid": false,
+    "value": { "approval": { "approvalId": "approval" } }
+  },
+  {
+    "name": "plan review result returns plan and approval",
+    "schema": "PlanReviewResult",
+    "valid": true,
+    "value": { "plan": { "schemaVersion": "video.edit-plan/v1", "projectId": "proj", "baseTimelineRevision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "intent": "trim the middle", "trimOperations": [{ "opId": "op", "order": "1", "trackId": "track", "clipId": "clip", "source": { "assetId": "asset", "assetContentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "streamUid": "stream:0", "probeRevision": "1" }, "sourceRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } }, "recordRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } } }], "transformOperations": [], "audioOperations": [], "transitionOperations": [], "subtitleOperations": [], "generationRequests": [], "qaRequirements": [], "externalDestinations": [], "maxCostMicros": "100", "deterministicBackendId": "ffmpeg", "planId": "plan", "revision": "1", "runId": "run", "idempotencyKey": "key", "planHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "status": "proposed" }, "approval": { "approvalId": "approval", "projectId": "proj", "subjectType": "edit_plan", "subjectId": "plan", "subjectRevision": "1", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "requiredInputs": [], "diffSummary": { "intent": "trim", "operationCount": 1, "summary": "single trim" }, "generationCostCapMicros": "100", "externalDestinations": [], "status": "pending", "expiresAt": "2026-11-25T00:00:00Z" } }
+  },
+  {
+    "name": "plan review result plan must be complete",
+    "schema": "PlanReviewResult",
+    "valid": false,
+    "value": { "plan": {}, "approval": {} }
+  },
+  {
+    "name": "plan review request carries a draft",
+    "schema": "PlanReviewRequest",
+    "valid": true,
+    "value": { "requestId": "r", "runId": "run", "toolCallId": "call", "draft": { "schemaVersion": "video.edit-plan/v1", "projectId": "proj", "baseTimelineRevision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "intent": "trim the middle", "trimOperations": [{ "opId": "op", "order": "1", "trackId": "track", "clipId": "clip", "source": { "assetId": "asset", "assetContentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "streamUid": "stream:0", "probeRevision": "1" }, "sourceRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } }, "recordRange": { "start": { "num": "0", "den": "1" }, "duration": { "num": "10", "den": "1" } } }], "transformOperations": [], "audioOperations": [], "transitionOperations": [], "subtitleOperations": [], "generationRequests": [], "qaRequirements": [], "externalDestinations": [], "maxCostMicros": "100" } }
+  },
+  {
+    "name": "plan review request draft must be complete",
+    "schema": "PlanReviewRequest",
+    "valid": false,
+    "value": { "requestId": "r", "runId": "run", "toolCallId": "call", "draft": {} }
   }
 ]
