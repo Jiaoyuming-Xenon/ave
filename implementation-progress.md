@@ -2,6 +2,24 @@
 
 本文件只记录产品实施与实测，不修改 M0 调研记录。
 
+## M1 验收矩阵（截至本轮，本机实测口径）
+
+| Goal 子项 | 实现 | 可运行测试 | 状态 |
+| --- | --- | --- | --- |
+| ① 设备 viewer/operator 授权 | access/authorization/websocket-server 设备通道 | access 3＋authorization 9（含 redeem_invitation 加固） | 已实现·已测 |
+| ① 设备项目发现 | store.listProjects＋rpc list_projects＋工作台 | store 8＋rpc 1＋contracts 14 | 已实现·已测 |
+| ① 取消/暂停终态事件 | jobs catch 优先 cancel＋recoverJobs 补发 | job-supervisor 10＋job-recovery 1＋job-events 1 | 已实现·已测 |
+| ① daemon/Worker 故障矩阵 | 预 abort/执行错误/CANCELLED/pausing 真实故障 | media-failure 3＋job-supervisor 10 | 已实现·已测 |
+| ① 存储完整性/幂等 | CAS 内容寻址＋mutate 事务回滚＋upload 守卫 | cas 3＋store 8＋upload 4 | 已实现·已测 |
+| ② 共享桌面/Android UI | 工作台项目发现/审批解耦/native 源说明 | 纯逻辑 cut 5（UI 未构建验收） | 已实现·UI 待实机 |
+| ② 确定性 worker 内核 | sampling-map/protected-composite/shot-index | Python 20＋8＋10 检查＋契约 14 fixtures | 已实现·已测 |
+| ① 全链路 e2e | editor.e2e/edit-desk.browser.e2e | 阻塞：protocol 生成 AOT 产物缺失（需完整 codegen/build，本机 OOM） | 环境阻塞 |
+| ② 生产 agent-worker 真实模型调用 | 需完整 build＋真实模型 | 本机 OOM 无法验收 | 环境阻塞 |
+| ② Android 真机/打包 | 需真机＋electron 打包 | 本机无真机、build OOM | 环境阻塞 |
+| ② native 源素材导入 | 需 expo-crypto 二进制 digest | API 不可核实，盲写风险高，暂不做 | 暂缓 |
+
+本机真实运行汇总：**14 文件 69 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 14 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
+
 ## 2026-11-25 · M1 启动
 
 - [x] 等 FilmCraft 调研 Phase 14 完成：根提交 `21c2892` 与统计提交 `8a6954c`，18 份 Markdown、2 份 SVG 和三个锁定参考校验通过。
