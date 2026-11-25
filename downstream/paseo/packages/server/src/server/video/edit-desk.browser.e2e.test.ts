@@ -68,6 +68,8 @@ test
           "lavfi",
           "-i",
           "testsrc2=size=160x90:rate=25:duration=2",
+          "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=2",
+          "-c:a", "aac",
           "-c:v",
           "libx264",
           source,
@@ -274,6 +276,13 @@ test
       const finalVideo = 'video[aria-label="观看成品审片代理"]';
       await web("wait", finalVideo);
       await expect.poll(async () => JSON.parse(await web("eval", `(()=>{const v=document.querySelector('${finalVideo}');return [v.videoWidth,v.videoHeight,Math.round(v.duration*1000)]})()`))).toEqual([640,360,1280]);
+      await web("eval", `(async () => {
+        const video = document.querySelector('${finalVideo}');
+        video.muted = true;
+        await video.play();
+      })()`);
+      await expect.poll(async () => Number(await web("eval",
+        `document.querySelector('${finalVideo}').currentTime`))).toBeGreaterThan(0);
       const beforeExport = ProjectSnapshotSchema.parse(await invoke("get_project", {projectId: project.projectId}));
       expect(beforeExport.jobs).toHaveLength(2);
       expect(beforeExport.approvals.find(a => a.purpose === "export")?.status).toBe("pending");
@@ -287,6 +296,22 @@ test
       await web("download", link, downloaded);
       expect(createHash("sha256").update(await readFile(downloaded)).digest("hex")).toBe(exportApproval?.subjectHash);
       await execute("ffmpeg", ["-nostdin", "-v", "error", "-xerror", "-i", downloaded, "-map", "0", "-f", "null", "-"], {timeout:30000});
+      const probe = await execute("ffprobe", ["-v", "error", "-count_frames", "-show_streams", "-of", "json", downloaded]);
+      expect(JSON.parse(probe.stdout).streams).toMatchObject([
+        { codec_name: "h264", width: 160, height: 90, start_pts: 0, nb_read_frames: "32", duration: "1.280000" },
+        { codec_name: "aac", start_pts: 0, time_base: "1/48000", duration_ts: 61440 },
+      ]);
+      await clickDesk("准备下载导出清单");
+      const manifestLink = 'a[download$=".json"]';
+      await web("wait", manifestLink);
+      const manifestFile = path.join(root, "manifest.json");
+      await web("download", manifestLink, manifestFile);
+      expect(JSON.parse(await readFile(manifestFile, "utf8"))).toMatchObject({
+        output: { sha256: exportApproval?.subjectHash },
+        planHash: exportApproval?.planHash,
+        revision: exportApproval?.subjectRevision,
+        approvalId: exportApproval?.approvalId,
+      });
       expect(createHash("sha256").update(await readFile(source)).digest("hex")).toBe(digest);
     } finally {
       try {

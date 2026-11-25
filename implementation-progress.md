@@ -43,6 +43,7 @@
 - 源帧到模型工作帧的时间映射：`worker/sampling_map.py` 根据源 PTS、duration 和有理数时基按半开区间采样；v2 索引读取入口校验索引字节摘要、源 hash、流和帧范围。`python3 -I scripts/check_sampling_map.py` 实跑通过：2 s 起点、8 个 VFR 帧得到 9 个 25 Hz 样本，源序号 1 采样两次；FFV1 工作副本的逐帧 PTS、时长和全片 RGB 回读一致。重复采样结果不能隐式绑回源轴；丢帧、偏移一 tick、尾帧时长错误、源帧间隙及索引绑定错误均被拒。1:1 对照保留超过 2^53 的相邻源 tick。v2 索引样本由实测 ffprobe 结果构造，未通过 daemon 提交 Job、调用模型或导出 VFR 成品。
 - VFR 成品的 daemon 验收用例：`editor.e2e.test.ts` 在原有上传、三次独立审批和成品分块下载流程上增加 VFR 样片。校验源索引、预览及下载成品的每个视频 PTS，而不仅是帧数/总时长。独立 FFmpeg 对照实测：25 Hz 网格删去序号 5 后，1 s 半开裁剪的 preview/final 均保留 24 帧，0.160 s 后下一帧是 0.240 s；两条编码路径时长均为 1 s。本轮 server typecheck 和定向 lint 通过，VFR 定向 Vitest 在启动前被权限模式拦截，未观察到实际 daemon 交付这份样片。
 - 成品审片与交付：工作台可请求由 final 候选派生的 640×360 代理，导出审批记录绑定候选哈希、代理和 QA；播放不交付，用户需单独批准。新增 Chrome 下载回读、成品 hash 与解码断言。五文件 lint 已通过；本轮 Chrome 和类型检查在启动前被策略拦截，未观察到最终界面验收。
+- 接续实测：服务端类型检查通过。真实 daemon 上的 `editor.e2e.test.ts` 与 `job-supervisor.test.ts` 共 14 个用例通过，覆盖 VFR 成品交付、音轨 QA 和解码任务控制。独立 Chrome 上的 `edit-desk.browser.e2e.test.ts` 三个场景通过，包含本机文件选择、拒绝预览和完整审片交付。成品审片代理实际播放后，导出审批仍为 pending。单独批准导出后，从工作台下载的 MP4 完整解码为 160×90、32 帧 H.264 和 48 kHz AAC，两流从零开始，均长 1.28 秒。源文件哈希保持一致，成品哈希等于审批绑定值。浏览器下载的 JSON 清单与该审批、版本、方案及成品哈希一致。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
