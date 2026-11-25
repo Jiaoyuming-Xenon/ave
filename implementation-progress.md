@@ -18,7 +18,7 @@
 | ② Android 真机/打包 | 需真机＋electron 打包 | 本机无真机、build OOM | 环境阻塞 |
 | ② native 源素材导入 | 需 expo-crypto 二进制 digest | API 不可核实，盲写风险高，暂不做 | 暂缓 |
 
-本机真实运行汇总：**14 文件 69 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 14 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
+本机真实运行汇总：**15 文件 74 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 14 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
 
 ### 复现验收方法（OOM 受限环境，2CPU/3.9GB）
 
@@ -109,6 +109,7 @@
 - 上传单块尺寸上限测试（已运行通过）：核实 `media.writeUploadChunk` 守卫——空块/单块>262144/end>expectedSize/end>MAX_SAFE_INTEGER 均 INVALID_ARGUMENT，偏移或内容冲突 IDEMPOTENCY_CONFLICT，相同 digest 幂等返回。`upload.test.ts` 增「单块尺寸上限」用例：262145 字节拒绝、恰好 262144 接受并推进 offset（空块与越界此前已覆盖）。本机 vitest（带新 ffprobe PATH）真实运行 upload 4 项全过（累计 69 项 TS 测试绿）。
 - 契约 schema 漂移检查（已运行通过）：`node --experimental-strip-types scripts/generate-video-schema.mjs`（v1.ts 仅依赖 zod、自包含，zod 4.4.3 原生 z.toJSONSchema）真实运行输出「40 video contract definitions · in sync」——提交的 `v1.schema.json` 与 zod 源 `v1.ts` 完全一致，无漂移；worker 契约离线校验所依赖的 wire schema 可信。此命令可独立复跑（无需 OOM 的完整 build）。
 - 独立媒体基线验收（已运行通过，含一处脚本修复）：带新 ffmpeg 运行根 `scripts/` 三个独立验收——`check_sampling_map.py` PASS（8 VFR 帧→9 个 25Hz 样本、精确像素/时间戳、非法 rebind/count/clock/duration/gap 拒绝、大 tick 保留）；`check_protected_composite.py` PASS（4 帧 2592 保护像素逐字节一致、opaque/feather、无损 RGB 往返、源未变）；`check_media_timebase.py` 初跑失败——诊断为新 ffmpeg（Lavf63 master）streamhash v2 在每流 checksum 行前输出 `#` 头部行，旧脚本「恰 3 行」假设被破坏（非产品回归）。修复 `measure()` 过滤 `#` 头部行（bytes 口径，保持 source/copy/shift 比较一致），复跑 PASS：19 VFR 帧、首 PTS 2s、40/80ms 步长、双 PCM＋定时字幕、流拷贝保留 packet 时间/载荷/解码 A/V、两个负对照可区分、预览时钟 [0.120,1.400) 32 帧 1.280s。
+- 二进制帧契约测试（已运行通过）：新增 `plugins/video-editor/test/bytes.test.ts` 覆盖 encodeFramedChunk/decodeFramedChunk/decodeChunkMetadata——metadata＋payload 往返（含空 payload）、非零 byteOffset 视图正确解码（DataView 用 frame.byteOffset）、帧<2 字节/声明头长越界拒绝、非对象 metadata（数组/null/标量/字符串）拒绝、超 16-bit 长度前缀（>65535）RangeError。本机 vitest 真实运行 5 项全过（累计 15 文件 74 项 TS 测试绿）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
