@@ -337,10 +337,11 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                   : null,
               )}
               {preview && mediaControl("观看预览候选", preview.artifactId, preview.revision, preview.blob)}
-              {proxy && delivery && layout.platform === "web" && <View>
+              {proxy && delivery && <View>
                 <Text style={heading}>成品交付审批</Text>
                 <Text selectable style={muted}>成品版本 {delivery.subjectRevision} · SHA-256 {delivery.subjectHash}</Text>
                 {mediaControl("观看成品审片代理", proxy.artifactId, proxy.revision, proxy.blob)}
+                {layout.platform !== "web" && <Text style={muted}>审片代理的播放请在桌面网页端进行；此处可核对版本与哈希并批准交付。</Text>}
                 <Text style={muted}>审片使用从此成品生成的 640×360 副本。批准后交付原尺寸成品，不重新渲染。</Text>
                 {button(delivery.status === "approved" ? "继续已批准的交付" : "确认审片并批准导出", () => approveJob(delivery, "export"), delivery.baseTimelineRevision !== project.revision)}
               </View>}
