@@ -53,6 +53,7 @@
 - 授权角色矩阵测试（代码已写，未运行）：新增 `authorization.test.ts`，覆盖 `editorPrincipalForCaller`（显式设备凭据优先、daemon.manage owner 会话映射、无凭据拒绝）与 `authorizeVideoMethod`（非 video 方法拒绝；owner 可 manage；viewer 可读含 list_projects/read_asset_chunk 但不可写/manage；operator 可编辑/控制 job 但不可 manage 设备/导入、不可 revoke_device）。直接验收 goal① 的角色/范围授权。未运行 Vitest。
 - list_projects 设备通道 e2e（代码已写，未运行）：`editor.e2e.test.ts` 的 paired-viewer 用例增断言——经真实 daemon＋DaemonClient 设备通道，`video.v1.list_projects` 对 viewer 仅返回其授权项目 A，owner 会话返回 A/B 全部。与 store 单元测试互补，验收 goal① 项目发现的范围隔离全链路。未运行 Vitest。
 - operator 设备通道读访问 e2e（代码已写，未运行）：`editor.e2e.test.ts` 的 paired-operator 用例增断言——operator 经设备通道 `list_projects` 仅返回自身项目，`get_events(afterSeq:"0")` 可读到事件日志（length>0）。补齐 operator 在设备通道上的项目发现与事件读路径。未运行 Vitest。
+- 取消终态一致性修正（代码已写，未运行）：`jobs.ts` 监督器 catch 路径原先仅按错误码判定终态——若用户已请求取消（cancel_requested）但 worker 在 abort 期间抛出非 CANCELLED 错误（如 FFMPEG_FAILED），job 会落为 failed，与成功路径（cancel_requested→cancelled）不一致。现 catch 优先 honoring cancel_requested→cancelled（清空 error），pausing+CANCELLED→paused 及其余 failed/cancelled 行为保持不变。`job-supervisor.test.ts` 增「取消期间 worker 报错仍 cancelled」测试；既有失败/取消/暂停用例行为均保留。属 goal① 故障矩阵硬化。未运行 Vitest。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
