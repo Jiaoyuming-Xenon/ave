@@ -94,6 +94,7 @@
 - pausing 真实故障终态测试（已运行通过）：补全 catch 故障矩阵边缘——pausing 中的 job 若 worker 在 abort 时抛非 CANCELLED 真实错误（如 FFMPEG_FAILED），应落 failed 并记录错误，而非被静默 paused（仅 CANCELLED＋pausing 才落 paused）。`job-supervisor.test.ts` 增用例断言 signal.aborted、state=failed、error.code=FFMPEG_FAILED。本机 vitest 真实运行 job-supervisor 10 项全过（累计 67 项 TS 测试绿）。
 - proposeCut 精度边界测试（已运行通过）：`cut.test.ts` 增「毫秒精度边界与整数位数上限」用例——最小合法裁剪 1ms（0→0.001，duration num=1）、9 位整数秒接受/10 位拒绝、裸小数「.5」与悬空小数点「1.」及「1.2.3」拒绝、首尾空白裁剪后解析。固化 milliseconds() 的 ^(\d{1,9})(?:\.(\d{1,3}))?$ 契约。本机 vitest 真实运行 cut 5 项全过（累计 68 项 TS 测试绿）。
 - 上传单块尺寸上限测试（已运行通过）：核实 `media.writeUploadChunk` 守卫——空块/单块>262144/end>expectedSize/end>MAX_SAFE_INTEGER 均 INVALID_ARGUMENT，偏移或内容冲突 IDEMPOTENCY_CONFLICT，相同 digest 幂等返回。`upload.test.ts` 增「单块尺寸上限」用例：262145 字节拒绝、恰好 262144 接受并推进 offset（空块与越界此前已覆盖）。本机 vitest（带新 ffprobe PATH）真实运行 upload 4 项全过（累计 69 项 TS 测试绿）。
+- 契约 schema 漂移检查（已运行通过）：`node --experimental-strip-types scripts/generate-video-schema.mjs`（v1.ts 仅依赖 zod、自包含，zod 4.4.3 原生 z.toJSONSchema）真实运行输出「40 video contract definitions · in sync」——提交的 `v1.schema.json` 与 zod 源 `v1.ts` 完全一致，无漂移；worker 契约离线校验所依赖的 wire schema 可信。此命令可独立复跑（无需 OOM 的完整 build）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
