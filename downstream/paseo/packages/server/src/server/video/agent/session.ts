@@ -93,12 +93,12 @@ export async function createPlannerSession(options: PlannerSessionOptions) {
       parameters,
       executionMode: "sequential" as const,
       constrainedSampling:
-        name === "submit_edit_plan" ? { type: "json_schema" as const, strict: "require" as const } : false,
+        name === "submit_edit_plan" ? { type: "json_schema" as const, strict: "require" as const } : false as const,
       async execute(toolCallId: string, args: unknown) {
         const request = option.parse({ protocolVersion: "1", toolCallId, tool: name, args });
         const output = await invoke(request);
         return {
-          content: [{ type: "text", text: JSON.stringify(output) }],
+          content: [{ type: "text" as const, text: JSON.stringify(output) }],
           details: output,
           ...(name === "submit_edit_plan" ? { terminate: true } : {}),
         };

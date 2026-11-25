@@ -394,6 +394,7 @@ export class MediaService {
     const worker = { principalId: "worker", role: "owner", projectIds: null } as EditorPrincipal;
     const job = this.store.job(projectId, jobId, worker);
     const assetId = job.analysisAssetId;
+    const rate = job.analysisRate ?? MediaService.ANALYSIS_RATE;
     if (!assetId) editorFailure("INVALID_ARGUMENT", "Analysis job has no target asset");
     this.store.updateJob(projectId, jobId, (current) => ({
       ...current,
@@ -436,7 +437,7 @@ export class MediaService {
           streamUid: stream.streamUid,
           first: 0,
           stop: frames.length,
-          rate: MediaService.ANALYSIS_RATE,
+          rate,
         },
         signal,
       );
@@ -450,7 +451,7 @@ export class MediaService {
       assetId,
       sourceSha256: asset.original.sha256,
       indexSha256: indexRef.sha256,
-      rate: MediaService.ANALYSIS_RATE,
+      rate,
       workerSupport: support,
       streams,
     });

@@ -38,7 +38,7 @@ export interface SamplingMapResult {
   presentation_index_sha256: string;
   source_clock: string;
   sample_rate: string;
-  source_frames: Array<{ pts: number; duration: number }>;
+  source_frames: Array<{ pts: string; duration: string }>;
   sample_to_source: number[];
   source_to_samples: number[][];
 }

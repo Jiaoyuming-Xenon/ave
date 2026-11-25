@@ -302,6 +302,10 @@ export const JobSnapshotSchema = z
     artifacts: z.array(ArtifactRefSchema),
     error: EditorErrorSchema.optional(),
     analysisAssetId: id.optional(),
+    analysisRate: z
+      .string()
+      .regex(/^[1-9][0-9]*\/[1-9][0-9]*$/)
+      .optional(),
   })
   .strict();
 export type JobSnapshot = z.infer<typeof JobSnapshotSchema>;

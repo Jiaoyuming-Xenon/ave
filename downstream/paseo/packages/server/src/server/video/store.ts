@@ -714,6 +714,7 @@ export class EditorStore {
           progress: { completedUnits: "0" },
           artifacts: [],
           analysisAssetId: input.assetId,
+          analysisRate: rate,
         });
         this.database
           .prepare(

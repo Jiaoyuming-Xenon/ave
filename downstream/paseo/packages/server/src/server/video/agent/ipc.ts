@@ -109,7 +109,7 @@ export class IpcChannel<In extends { kind: string }, Out> {
   private onMessage: (message: In) => void | Promise<void>;
 
   constructor(
-    private readonly input: NodeJS.ReadableStream,
+    input: NodeJS.ReadableStream,
     private readonly output: NodeJS.WritableStream,
     private readonly inSchema: z.ZodType<In>,
     onMessage: (message: In) => void | Promise<void> = () => {},

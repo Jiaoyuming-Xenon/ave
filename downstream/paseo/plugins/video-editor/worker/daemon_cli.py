@@ -40,7 +40,7 @@ def _sampling_map(args: argparse.Namespace) -> dict:
     doc = asdict(smap)
     doc["source_clock"] = f"{smap.source_clock.numerator}/{smap.source_clock.denominator}"
     doc["sample_rate"] = f"{smap.sample_rate.numerator}/{smap.sample_rate.denominator}"
-    doc["source_frames"] = [{"pts": f.pts, "duration": f.duration} for f in smap.source_frames]
+    doc["source_frames"] = [{"pts": str(f.pts), "duration": str(f.duration)} for f in smap.source_frames]
     doc["sample_to_source"] = list(smap.sample_to_source)
     doc["source_to_samples"] = [list(g) for g in smap.source_to_samples()]
     return doc
