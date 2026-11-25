@@ -591,7 +591,11 @@ export class MediaService {
     });
     const vLabels = ops.map((_, i) => `[vs${i}]`).join("");
     const aLabels = audio[0] ? ops.map((_, i) => `[as${i}]`).join("") : "";
-    filters.push(`${vLabels}concat=n=${ops.length}:v=1:a=0[vcat]`);
+    // concat uses a microsecond clock, which cannot represent 1/30 exactly.
+    // Keep a single trim in its native clock; re-quantize joins to that same stream clock.
+    const clock = `${video.timeBase.num}/${video.timeBase.den}`;
+    filters.push(ops.length === 1 ? `${vLabels}null[vcat]` :
+      `${vLabels}concat=n=${ops.length}:v=1:a=0,settb=${clock}[vcat]`);
     if (audio[0]) filters.push(`${aLabels}concat=n=${ops.length}:v=0:a=1[acat]`);
     filters.push(
       kind === "preview"

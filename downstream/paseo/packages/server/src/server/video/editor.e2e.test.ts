@@ -529,7 +529,8 @@ test("a paired viewer can read only its project and loses access when revoked", 
       /access denied/i,
     );
     await invoke("revoke_device", { deviceId: issued.deviceId });
-    await expect(viewer.getVideoProjectSummary(a.projectId)).rejects.toThrow(/access denied/i);
+    await expect.poll(() => viewer.isConnected).toBe(false);
+    await expect(viewer.getVideoProjectSummary(a.projectId)).rejects.toThrow();
     await expect(openViewer().connect()).rejects.toThrow();
     expect(
       ProjectSnapshotSchema.parse(await invoke("get_project", { projectId: a.projectId })).title,

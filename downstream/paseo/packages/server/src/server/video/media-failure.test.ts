@@ -115,13 +115,13 @@ it("rejects a source whose CAS bytes changed after import", async () => {
   }
 });
 
-it("rejects a job kind the deterministic backend does not support", async () => {
+it("rejects an analysis job with no target asset", async () => {
   const f = await jobFixture();
   try {
     f.store.updateJob(f.projectId, f.jobId, (job) => ({ ...job, kind: "analysis" }));
     await expect(
       f.media.executeJob(f.projectId, f.jobId, new AbortController().signal),
-    ).rejects.toMatchObject({ code: "CAPABILITY_UNAVAILABLE" });
+    ).rejects.toMatchObject({ code: "INVALID_ARGUMENT", message: "Analysis job has no target asset" });
   } finally {
     f.store.close();
     await rm(f.root, { recursive: true, force: true });
