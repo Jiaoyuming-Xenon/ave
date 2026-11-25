@@ -99,7 +99,7 @@ def is_code_line(path: str, line: str) -> bool:
 def repo_snapshot(repo: Path, revision: str, members: list[dict]) -> tuple[dict, dict]:
     commits = {member["id"]: 0 for member in members}
     lines = {member["id"]: 0 for member in members}
-    for record in run_git(repo, "log", "--format=%an%x00%ae%x00%x00%s", revision).splitlines():
+    for record in run_git(repo, "log", "--format=%an%x00%ae%x00%s", revision).splitlines():
         fields = record.split("\x00")
         if len(fields) < 3 or fields[2].startswith("chore(stats):"):
             continue
