@@ -18,6 +18,8 @@ test ! -e vendor/paseo && (
 
 上游许可证随覆盖目录保留。依赖、参考检出、素材、权重和安装包不入库。
 
+在 `vendor/paseo` 运行 `npm ci` 安装锁定依赖。已有依赖若是用 `--ignore-scripts` 安装的，请在同一目录先运行 `npm run postinstall`，再导出桌面 renderer。首屏的 `SheetHostScope` 依赖该步骤为 `@gorhom/bottom-sheet` 补齐的导出。
+
 ## 文档入口
 
 从 [`demo.md`](demo.md) 开始。设计拆分为产品与验收、总体架构、Agent Runtime、媒体流水线、客户端与远程、接口契约、团队并行、测试发布、风险与实验九份文档。

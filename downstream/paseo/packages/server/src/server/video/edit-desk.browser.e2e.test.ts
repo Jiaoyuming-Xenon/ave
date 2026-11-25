@@ -128,7 +128,11 @@ test
       import {DaemonClient} from '@getpaseo/client/internal/daemon-client';
       const modules={'react':React,'react/jsx-runtime':jsx,'react-native':RN,'zod':zod,'@getpaseo/plugin/client':{useRpc},'@getpaseo/plugin/client/ui':{}};
       let Screen; const plugin=(${plugin.clientBundle})(id=>{if(!modules[id])throw Error('Unexpected module '+id);return modules[id]});
-      plugin.default({addScreen:({Component})=>Screen=Component,addSidebarHeaderItem:()=>{}});
+      const dispose = plugin.default({
+        addScreen: ({Component}) => { Screen = Component; return () => { Screen = undefined }; },
+        addSidebarHeaderItem: () => () => {},
+      });
+      if (typeof dispose !== 'function') throw Error('Missing plugin cleanup function');
       const daemon=new DaemonClient({url:${JSON.stringify(ws)},clientId:'qa-desk',clientType:'browser'});
       const colors={surface0:'#17222d',foreground:'#f1f6fa',foregroundMuted:'#becbd6',accent:'#3875b4',accentForeground:'#ffffff',statusDanger:'#ffb4af'};
       daemon.connect().then(()=>createRoot(document.getElementById('root')).render(<PluginRpcProvider invoke={(method,input)=>daemon.invokePluginRpc('video-editor',method,input)}><Screen layout={{compact:false,platform:'web'}} theme={{colors}} host={{id:'local',label:'QA'}} /></PluginRpcProvider>)).catch(e=>document.body.textContent=e.message);

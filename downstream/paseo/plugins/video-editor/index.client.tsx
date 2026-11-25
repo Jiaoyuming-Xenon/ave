@@ -8,7 +8,11 @@ function DeskItem({ currentScreen, openScreen }: PluginSidebarItemProps) {
   return <SidebarRow icon="Scissors" active={currentScreen?.screenId === "desk"} onPress={open} />;
 }
 
-export default function contribute(client: PluginClientContext) {
-  client.addScreen({ id: "desk", title: "剪辑工作台", Component: EditDesk });
-  client.addSidebarHeaderItem({ id: "edit-desk", title: "剪辑工作台", Component: DeskItem });
+export default function contribute(client: PluginClientContext): () => void {
+  const removeScreen = client.addScreen({ id: "desk", title: "剪辑工作台", Component: EditDesk });
+  const removeItem = client.addSidebarHeaderItem({ id: "edit-desk", title: "剪辑工作台", Component: DeskItem });
+  return () => {
+    removeItem();
+    removeScreen();
+  };
 }
