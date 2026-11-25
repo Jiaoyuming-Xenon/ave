@@ -408,5 +408,29 @@
     "schema": "JobRequest",
     "valid": false,
     "value": { "projectId": "p" }
+  },
+  {
+    "name": "create job result wraps a snapshot and dedup flag",
+    "schema": "CreateJobResult",
+    "valid": true,
+    "value": { "job": { "jobId": "job", "projectId": "p", "revision": "1", "planHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "kind": "preview", "state": "draft", "artifacts": [] }, "deduplicated": false }
+  },
+  {
+    "name": "create job result dedup flag must be boolean",
+    "schema": "CreateJobResult",
+    "valid": false,
+    "value": { "job": { "jobId": "job", "projectId": "p", "revision": "1", "planHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "kind": "preview", "state": "draft", "artifacts": [] }, "deduplicated": "no" }
+  },
+  {
+    "name": "events result empty with snapshot flag",
+    "schema": "EventsResult",
+    "valid": true,
+    "value": { "events": [], "snapshotRequired": false }
+  },
+  {
+    "name": "events result snapshot flag must be boolean",
+    "schema": "EventsResult",
+    "valid": false,
+    "value": { "events": [], "snapshotRequired": "no" }
   }
 ]
