@@ -314,14 +314,15 @@ function resolveConnectionAuth(
 ): ReturnType<typeof chooseConnectionAuth> | Promise<ReturnType<typeof chooseConnectionAuth>> {
   if (config.videoDevice) {
     const url = new URL(config.url);
+    // Phones reach the daemon through the E2E relay; direct device credentials stay loopback-only.
+    const viaRelay = isRelayClientWebSocketUrl(config.url);
     if (
       !["ws:", "wss:"].includes(url.protocol) ||
-      !["127.0.0.1", "[::1]"].includes(url.hostname) ||
-      isRelayClientWebSocketUrl(config.url) ||
+      (!viaRelay && !["127.0.0.1", "[::1]"].includes(url.hostname)) ||
       url.username ||
       url.password
     ) {
-      throw new Error("Video credentials currently require a direct loopback connection");
+      throw new Error("Video credentials require a direct loopback or relay connection");
     }
     const { deviceId, token } = config.videoDevice;
     return { helloAuth: { kind: "videoDevice", deviceId, token }, headers: {} };
