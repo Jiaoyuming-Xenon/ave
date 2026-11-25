@@ -79,8 +79,8 @@
       "id": "media-worker",
       "title": "FilmCraft/FFmpeg、mask、生成 Worker、合成与 QA 实现",
       "owners": ["l"],
-      "status": "planned",
-      "evidence": "demo/04-media-pipeline.md"
+      "status": "in_progress",
+      "evidence": "scripts/check_sam2_shot.py; scripts/check_vace_shot.py"
     },
     {
       "id": "desktop-editor",
