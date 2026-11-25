@@ -18,7 +18,7 @@
 | ② Android 真机/打包 | 需真机＋electron 打包 | 本机无真机、build OOM | 环境阻塞 |
 | ② native 源素材导入 | 需 expo-crypto 二进制 digest | API 不可核实，盲写风险高，暂不做 | 暂缓 |
 
-本机真实运行汇总：**18 文件 89 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 14 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
+本机真实运行汇总：**18 文件 93 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 18 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
 
 ### 复现验收方法（OOM 受限环境，2CPU/3.9GB）
 
@@ -116,6 +116,7 @@
 - plan 校验边缘测试（已运行通过）：`store.test.ts` 增「plan validation edges」用例覆盖 `validatePlan` 链——过期 baseTimelineRevision/baseAssetManifestHash→REVISION_CONFLICT；trim 指向缺失素材/错误 contentHash→PLAN_SEMANTIC_INVALID「missing or changed asset」；不存在/非视频 streamUid→「existing video stream」；负起点/零时长（源与记录同置 0 以绕过能力门时长相等检查）/零分母→validateRange「non-empty, non-negative」。核实校验顺序：版本绑定→assertRenderablePreview 能力门→素材身份→流存在→范围。本机 vitest 真实运行 store 9 项全过（累计 18 文件 87 项 TS 测试绿）。
 - grant 生命周期边缘测试（已运行通过）：`store.test.ts` 增「grant lifecycle edges」两用例——已消费 grant 换新 requestId 创建另一 job→APPROVAL_CONSUMED（同 requestId 重放走幂等缓存绕过消费检查，故须换 requestId 才命中）；批准后再 addAsset 变更项目修订、用旧 expectedRevision 创建 job→REVISION_CONFLICT「project changed after approval」。补全 createJob 的 grant 归属/消费/版本守卫覆盖。本机 vitest 真实运行 store 11 项全过（累计 18 文件 89 项 TS 测试绿）。
 - 完整回归（已运行通过）：18 文件 89 项 TS 测试一次性联合运行全绿；Python 内核 sampling-map 20＋protected-composite 8＋shot-index 10 检查、worker 契约 14 fixtures/40 definitions 同步复跑 PASS。至此 M1 可在本机运行的产品表面（授权/存储/Job 故障矩阵/上传/CAS/计划校验链/grant 生命周期/候选 QA/预览能力门/二进制帧/错误 sanitization/纯逻辑裁剪）均已补可运行测试并实测；两个未勾 goal 的剩余验收（全链路 e2e AOT、生产 agent-worker 真实模型、Android 真机/打包）确属环境阻塞，非代码缺口。
+- 契约 fixtures 扩充（已运行通过，TS＋Python 双测）：`fixtures.json` 增 4 个正反样例覆盖此前未作 fixture 目标的命名 schema——CapabilitySet（声明 device-channel/list-projects 的合法集合 vs 后端 id 非枚举值拒绝）、JobControlRequest（已知 action=cancel 接受 vs 未知 action=delete 拒绝）。contracts.test（it.each）与 check_worker_contract.py 共享同一 fixtures，本机真实运行 TS 18 项＋Python「18 wire fixtures against 40 offline definitions」双过，zod 与 jsonschema 判定一致（累计 18 文件 93 项 TS 测试绿）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误

@@ -108,5 +108,41 @@
     "schema": "BlobRef",
     "valid": false,
     "value": { "sha256": "0123", "bytes": "3", "mediaType": "video/mp4" }
+  },
+  {
+    "name": "capability set declares device channel",
+    "schema": "CapabilitySet",
+    "valid": true,
+    "value": {
+      "protocolVersion": "1",
+      "features": ["device-channel", "list-projects"],
+      "operations": ["video.v1.list_projects"],
+      "deterministicBackends": [{ "id": "ffmpeg", "available": true }],
+      "workerProfiles": []
+    }
+  },
+  {
+    "name": "capability backend id is enumerated",
+    "schema": "CapabilitySet",
+    "valid": false,
+    "value": {
+      "protocolVersion": "1",
+      "features": [],
+      "operations": [],
+      "deterministicBackends": [{ "id": "other", "available": true }],
+      "workerProfiles": []
+    }
+  },
+  {
+    "name": "job control accepts a known action",
+    "schema": "JobControlRequest",
+    "valid": true,
+    "value": { "projectId": "p", "jobId": "j", "requestId": "r", "action": "cancel" }
+  },
+  {
+    "name": "job control rejects an unknown action",
+    "schema": "JobControlRequest",
+    "valid": false,
+    "value": { "projectId": "p", "jobId": "j", "requestId": "r", "action": "delete" }
   }
 ]
