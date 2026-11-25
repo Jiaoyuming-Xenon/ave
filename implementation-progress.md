@@ -18,7 +18,7 @@
 | ② Android 真机/打包 | 需真机＋electron 打包 | 本机无真机、build OOM | 环境阻塞 |
 | ② native 源素材导入 | 需 expo-crypto 二进制 digest | API 不可核实，盲写风险高，暂不做 | 暂缓 |
 
-本机真实运行汇总：**20 文件 129 项 TS 测试全绿**（18 个 video-editor 文件 111 项＋protocol daemon-endpoints-extra 11 项＋connection-offer-extra 7 项；独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；另上游 protocol daemon-endpoints 26／connection-offer 5／chunked-transport 34 项亦本机跑通（goal① 设备连接/配对/分帧佐证，chunked 1 项需 dist 构建属环境阻塞）；**3 个 Python 内核 38 检查**＋**worker 契约 35 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
+本机真实运行汇总：**21 文件 154 项 TS 测试全绿**（18 个 video-editor 文件 111 项＋protocol daemon-endpoints-extra 11／connection-offer-extra 7／messages.wire-compat 25；独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；另上游 protocol daemon-endpoints 26／connection-offer 5／chunked-transport 34 项亦本机跑通（goal① 设备连接/配对/分帧佐证，chunked 1 项需 dist 构建属环境阻塞）；**3 个 Python 内核 38 检查**＋**worker 契约 35 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。glob 全量回归仅 editor.e2e（缺生成 AOT）与 edit-desk.browser.e2e（缺 esbuild/浏览器构建）2 文件收集失败，属已知环境阻塞。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
 
 ### 复现验收方法（OOM 受限环境，2CPU/3.9GB）
 
@@ -127,6 +127,7 @@
 - 审批请求 wire fixtures（已运行通过，TS＋Python 双测）：`fixtures.json` 增 2 个 ApprovalRequest 样例——pending edit_plan 审批（含 requiredInputs/diffSummary/generationCostCapMicros/expiresAt datetime）vs subjectType="bogus" 拒绝（枚举门）。ApprovalRequest 是 propose_cut 创建的审批核心对象，固化其 wire 形状。本机真实运行 TS contracts 35 项＋Python「35 wire fixtures against 40 offline definitions」双过（累计 18 文件 111 项 TS 测试绿）。
 - 设备/relay 连接 URI 纯逻辑测试（已运行通过，goal① 设备接入安全）：上游 `packages/protocol/src/daemon-endpoints.test.ts`（26 项，仅 type-only import、运行时自包含）在本机独立 vitest 真实跑通，验证 tcp/relay URI 解析序列化往返、IPv6、userinfo 拒绝、relay 版本归一、protected 安全模式不静默降级。新增 downstream `daemon-endpoints-extra.test.ts`（11 项）补上游未覆盖缺口：parseHostPort 端口范围/缺失/空主机、normalizeHostPort IPv6 重括号、normalizeLoopbackToLocalhost 四种 loopback 归一与非 loopback 不变、deriveLabelFromEndpoint 回退、isRelayClientWebSocketUrl 须 role=client＋serverId、extractHostPortFromWebSocketUrl 默认端口（wss→443/ws→80）与非法协议/路径拒绝。本机真实运行 protocol 2 文件 37 项全绿（累计 19 文件 122 项 TS 测试绿）。
 - relay 配对 offer 失败闭合测试（已运行通过，goal① 设备配对安全）：上游 `connection-offer.test.ts`（5 项，仅 zod 依赖）本机跑通；新增 downstream `connection-offer-extra.test.ts`（7 项）补失败闭合缺口——decodeOfferFragmentPayload 对非法 UTF-8（fatal decoder）/非 JSON 抛错、parseConnectionOfferFromUrl 对空/纯空白/无 fragment/空 fragment 归 null 而对 schema 非法（v=1、空 serverId）抛错、ConnectionOfferV2Schema 须 v=2＋非空 serverId/key/endpoint、minimumSecurityMode 仅受 "protected" 字面量。另上游 `chunked-transport.test.ts` 34 项纯逻辑本机跑通，1 项「many one-byte chunks 内存上限」需 `../dist/chunked-transport.js` 构建产物（CI 先 build），属 OOM 环境阻塞非产品 bug。本机真实运行 connection-offer 2 文件 12 项全绿（累计 20 文件 129 项 TS 测试绿）。
+- 协议 wire 兼容验证（已运行通过，goal① 设备通道消息）：downstream `messages.wire-compat.test.ts`（25 项，已在 PR）本机独立 vitest 真实跑通——messages.ts 完整 zod 消息树可解析（不触及 e2e 的生成 AOT 路径），其中「video summary is optional and exposes only project identity, title and revision」固化 VideoProjectSummaryRequest/Response 的 wire 形状（list_projects 设备通道仅暴露项目身份/标题/修订，不泄露素材）。完整 downstream 套件 21 文件 154 项联合回归全绿；glob 误匹配的 editor.e2e/edit-desk.browser.e2e 2 文件因缺生成 AOT/esbuild 收集失败，属已知环境阻塞。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
