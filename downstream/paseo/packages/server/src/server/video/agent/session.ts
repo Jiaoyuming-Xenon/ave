@@ -1,7 +1,14 @@
-import { createAgentSession, SessionManager, SettingsManager, createExtensionRuntime } from "@earendil-works/pi-coding-agent";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import {
+  createAgentSession,
+  createExtensionRuntime,
+  ModelRuntime,
+  SessionManager,
+  SettingsManager,
+} from "@earendil-works/pi-coding-agent";
 import { z } from "zod";
 import { VideoToolCallSchema, type EditorEvent } from "#video-editor/contracts/v1";
-import { randomUUID } from "node:crypto";
 import { VIDEO_PLANNER_PROMPT, videoPlannerPromptSignature } from "./prompt.js";
 import { newRequestId, type DaemonToWorker, type IpcChannel, type WorkerToDaemon } from "./ipc.js";
 
@@ -51,6 +58,48 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
     "Field-level diff between an accepted plan (planId) and a candidate draft before submitting. Read-only.",
 };
 
+// Pi's strict provider schema represents optional properties with null. Adapt
+// those values before Pi validates against the original tool parameters.
+function omitStrictToolNulls(value: unknown, schema: z.core.$ZodType): unknown {
+  if (schema instanceof z.ZodOptional) {
+    if (value === null && !schema.safeParse(null).success) return undefined;
+    return omitStrictToolNulls(value, schema.unwrap());
+  }
+  if (Array.isArray(value) && schema instanceof z.ZodArray) {
+    return value.map(item => omitStrictToolNulls(item, schema.element));
+  }
+  if (value && typeof value === "object" && !Array.isArray(value) && schema instanceof z.ZodObject) {
+    return Object.fromEntries(Object.entries(value).flatMap(([key, field]) => {
+      const adapted = Object.hasOwn(schema.shape, key)
+        ? omitStrictToolNulls(field, schema.shape[key])
+        : field;
+      return adapted === undefined ? [] : [[key, adapted]];
+    }));
+  }
+  return value;
+}
+
+async function configuredModel(workspace: string) {
+  const selection = process.env.VIDEO_EDITOR_PLANNER_MODEL;
+  const modelsPath = process.env.VIDEO_EDITOR_PLANNER_MODELS;
+  if (selection === undefined && modelsPath === undefined) return {};
+
+  const match = /^([^/]+)\/(.+)$/.exec(selection ?? "");
+  if (!match || (modelsPath !== undefined && !path.isAbsolute(modelsPath))) {
+    throw new Error("Planner model configuration requires provider/model and an absolute models path");
+  }
+  const [, provider, modelId] = match;
+  const modelRuntime = await ModelRuntime.create({
+    authPath: path.join(workspace, "auth.json"),
+    modelsPath: modelsPath ?? null,
+    modelsStorePath: path.join(workspace, "models-store.json"),
+    allowModelNetwork: false,
+  });
+  const model = modelRuntime.getModel(provider, modelId);
+  if (!model) throw new Error("Configured planner model is unavailable");
+  return { modelRuntime, model };
+}
+
 /**
  * Create the locked-down planner session (same construction as the vetted
  * worker/closed-session.mjs probe): noTools:"all" plus only the closed
@@ -98,6 +147,7 @@ export async function createPlannerSession(options: PlannerSessionOptions) {
 
   const customTools = VideoToolCallSchema.options.map((option) => {
     const name = option.shape.tool.value as string;
+    const submit = name === "submit_edit_plan";
     const parameters = z.toJSONSchema(option.shape.args, { io: "input" });
     delete (parameters as Record<string, unknown>).$schema;
     return {
@@ -107,14 +157,15 @@ export async function createPlannerSession(options: PlannerSessionOptions) {
       parameters,
       executionMode: "sequential" as const,
       constrainedSampling:
-        name === "submit_edit_plan" ? { type: "json_schema" as const, strict: "require" as const } : false as const,
+        submit ? { type: "json_schema" as const, strict: "require" as const } : false as const,
+      ...(submit && { prepareArguments: (args: unknown) => omitStrictToolNulls(args, option.shape.args) }),
       async execute(toolCallId: string, args: unknown) {
         const request = option.parse({ protocolVersion: "1", toolCallId, tool: name, args });
         const output = await invoke(request);
         return {
           content: [{ type: "text" as const, text: JSON.stringify(output) }],
           details: output,
-          ...(name === "submit_edit_plan" ? { terminate: true } : {}),
+          ...(submit ? { terminate: true } : {}),
         };
       },
     };
@@ -122,6 +173,7 @@ export async function createPlannerSession(options: PlannerSessionOptions) {
   const names = Object.keys(TOOL_DESCRIPTIONS).sort();
 
   const { session } = (await createAgentSession({
+    ...(await configuredModel(options.workspace)),
     cwd: options.workspace,
     agentDir: options.workspace,
     resourceLoader: resources,
@@ -174,7 +226,10 @@ export async function createPlannerSession(options: PlannerSessionOptions) {
 
   return {
     session,
-    prompt: (text: string) => session.prompt(text),
+    prompt: (text: string) =>
+      session.prompt(
+        `The daemon bound this run to projectId ${options.projectId}. Begin with get_project_snapshot for that project.\n\nUser edit request:\n${text}`,
+      ),
     steer: (text: string) => session.steer(text),
     followUp: (text: string) => session.followUp(text),
     abort: () => session.abort(),
