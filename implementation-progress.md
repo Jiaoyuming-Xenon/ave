@@ -49,6 +49,7 @@
 - 设备项目发现（代码已写，未运行）：手机监控面需要枚举可访问项目。新增 `store.listProjects(principal)`：owner（projectIds=null）返回全部项目；配对设备按 `project_grants` 连接且再经 `principal.projectIds` 范围过滤（双重防护）。新增 RPC `video.v1.list_projects` 并纳入 viewer 可读方法，设备通道可直接调用。`store.test.ts` 覆盖 owner 全量、设备仅授权项目、范围外 grant 被过滤、未配对主体为空。未运行 Vitest。
 - 项目发现接入工作台（代码已写，未运行）：`contracts/v1.ts` 增 `listProjectsRpc`（output 用内联 zod，不新增导出 `*Schema`，故 `v1.schema.json` 生成bundle不变、无需重生成）；`edit-desk.tsx` 增「我的项目」区，点「列出可访问项目」调 `list_projects`，渲染可点选条目直接 `read` 打开。桌面与手机共用，免去手输项目 ID。未运行 typecheck/真机。
 - 能力声明（代码已写，未运行）：`get_capabilities` 的 `features` 增 `device-channel`、`operations` 增 `list-projects`，让桌面/手机客户端可发现设备通道与项目枚举。`CapabilitySetSchema` 两字段为 `z.array(z.string())`，新增字符串不改变 schema、无需重生成；e2e 对 capabilities 用 `toMatchObject` 部分匹配，不受影响。另核实：设备 reader socket 并无短空闲关闭（仅 hello 握手与外部断连清理有定时器），`get_events` 最长 25s 长轮询不会被服务端提前断连，relay 隧道空闲 60s 足够。
+- 终态矩阵单元测试（代码已写，未运行）：`store.test.ts` 增 `controlJob terminal matrix`，单 job 顺序覆盖无 worker `pause→paused`、`resume→rendering_preview`、有 worker `pause→pausing`、无 worker 从 pausing `cancel→cancelled`、对已终态 job 再 cancel 抛 “already finished”，并断言 `events()` 中 `job.state.changed` 含 rendering_preview/paused/pausing/cancelled。直接验收 goal① 的取消/暂停终态与事件发射。未运行 Vitest。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误

@@ -323,3 +323,59 @@ describe("listProjects", () => {
     store.close();
   });
 });
+
+describe("controlJob terminal matrix", () => {
+  it("pause/resume/cancel reach the right states with and without a worker and emit events", async () => {
+    const { store, cas, project } = await fixture();
+    const blob = await cas.writeBytes(Buffer.from("fixture"), "video/mp4");
+    await store.addAsset(
+      project.projectId,
+      {
+        assetId: blob.sha256,
+        original: blob,
+        displayName: "fixture",
+        streams: [
+          { streamUid: "stream:0", streamIndex: 0, kind: "video", codec: "h264", timeBase: { num: "1", den: "30" }, disposition: {} },
+        ],
+        presentationIndex: blob,
+        probe: blob,
+        sourceNeverWritable: true,
+      },
+      "asset",
+      owner,
+    );
+    const current = store.project(project.projectId, owner);
+    const { approval } = store.createPlan(draft(current));
+    const { grant } = store.decideApproval(
+      { requestId: "approve", approvalId: approval.approvalId, expectedRevision: current.revision, decision: "approve" },
+      owner,
+    );
+    const { job } = store.createJob({
+      requestId: "job",
+      projectId: current.projectId,
+      approvalId: approval.approvalId,
+      grantId: grant!.grantId,
+      expectedRevision: current.revision,
+      principal: owner,
+    });
+    expect(job.state).toBe("rendering_preview");
+    const control = (action: "pause" | "resume" | "cancel", requestId: string, hasWorker: boolean) =>
+      store.controlJob({ projectId: current.projectId, jobId: job.jobId, action, requestId, principal: owner }, hasWorker);
+    // No worker: pause finalizes straight to paused, resume re-queues the start state.
+    expect(control("pause", "pause", false).job.state).toBe("paused");
+    expect(control("resume", "resume", false).job.state).toBe("rendering_preview");
+    // With a worker: pause only requests a safe checkpoint.
+    expect(control("pause", "pause-worker", true).job.state).toBe("pausing");
+    // No worker: cancel finalizes straight to cancelled even from a requested state.
+    expect(control("cancel", "cancel", false).job.state).toBe("cancelled");
+    expect(() => control("cancel", "cancel-again", false)).toThrow("already finished");
+    const states = store
+      .events(current.projectId, "0", owner)
+      .events.filter((e) => e.type === "job.state.changed")
+      .map((e) => (e.payload as { state: string }).state);
+    expect(states).toEqual(
+      expect.arrayContaining(["rendering_preview", "paused", "pausing", "cancelled"]),
+    );
+    store.close();
+  });
+});
