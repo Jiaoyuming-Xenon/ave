@@ -234,5 +234,17 @@
     "schema": "EditPlanDraftV1",
     "valid": false,
     "value": { "schemaVersion": "video.edit-plan/v1", "projectId": "proj", "baseTimelineRevision": "1", "baseAssetManifestHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "intent": "", "trimOperations": [], "transformOperations": [], "audioOperations": [], "transitionOperations": [], "subtitleOperations": [], "generationRequests": [], "qaRequirements": [], "externalDestinations": [], "maxCostMicros": "100" }
+  },
+  {
+    "name": "approval request pending edit plan",
+    "schema": "ApprovalRequest",
+    "valid": true,
+    "value": { "approvalId": "approval", "projectId": "proj", "subjectType": "edit_plan", "subjectId": "plan", "subjectRevision": "1", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "requiredInputs": [{ "type": "asset", "id": "asset", "revision": "1", "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }], "diffSummary": { "intent": "trim", "operationCount": 1, "summary": "single trim" }, "generationCostCapMicros": "100", "externalDestinations": [], "status": "pending", "expiresAt": "2026-11-25T00:00:00Z" }
+  },
+  {
+    "name": "approval request subject type must be known",
+    "schema": "ApprovalRequest",
+    "valid": false,
+    "value": { "approvalId": "approval", "projectId": "proj", "subjectType": "bogus", "subjectId": "plan", "subjectRevision": "1", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "requiredInputs": [], "diffSummary": { "intent": "trim", "operationCount": 1, "summary": "single trim" }, "generationCostCapMicros": "100", "externalDestinations": [], "status": "pending", "expiresAt": "2026-11-25T00:00:00Z" }
   }
 ]
