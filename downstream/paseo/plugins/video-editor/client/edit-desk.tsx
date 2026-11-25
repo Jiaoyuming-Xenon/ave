@@ -229,7 +229,10 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
           <DeskControl
             key={entry.projectId}
             accessibilityRole="button"
-            action={async (value: string) => show(await read({ projectId: value }))}
+            disabled={busy}
+            action={(value: string) => {
+              void perform(async () => show(await read({ projectId: value })));
+            }}
             value={entry.projectId}
             style={styles.source}
           >
