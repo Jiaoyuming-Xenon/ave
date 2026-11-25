@@ -121,6 +121,7 @@
 - 事件 wire 契约 fixtures（已运行通过，TS＋Python 双测）：`fixtures.json` 增 3 个 EditorEvent 样例——合法终态 job.state.changed 事件（设备对账依赖，ISO datetime/uint seq/非空 type）、seq 为 JSON 数字拒绝、空 type 拒绝。本机真实运行 TS contracts 25 项＋Python「25 wire fixtures against 40 offline definitions」双过。**累计 18 文件 100 项 TS 测试绿**。
 - 恢复状态矩阵测试（已运行通过）：`job-recovery.test.ts` 增用例固化 `recoverJobs` 矩阵——rendering_preview/rendering_final/validating/analyzing/pausing/cancel_requested 六个在途态重启后均落 failed（NEEDS_RECONCILIATION，retryable）；awaiting_review/paused 等已结算态保持不动。夹具加 state 参数（默认 rendering_preview 不影响原用例）。本机 vitest 真实运行 job-recovery 2 项全过（累计 18 文件 101 项 TS 测试绿）。
 - 核心数据形状 fixtures（已运行通过，TS＋Python 双测）：`fixtures.json` 增 4 样例——ArtifactRef（合法 candidate 引用 vs 未知 kind 拒绝，kind 枚举 probe/proxy/mask/candidate/export/qa/manifest）、SourceAsset（合法只读源素材 vs sourceNeverWritable=false 拒绝，须 literal true）。本机真实运行 TS contracts 29 项＋Python「29 wire fixtures against 40 offline definitions」双过（累计 18 文件 105 项 TS 测试绿）。
+- 收尾完整回归（已运行通过）：18 文件 105 项 TS 测试联合运行全绿；Python 内核 20＋8＋10 检查、worker 契约 29 fixtures/40 definitions、独立媒体验收 check_media_timebase/check_sampling_map/check_protected_composite 同步复跑全 PASS。M1 可在本机运行的产品表面与核心数据形状（授权/存储/Job 故障与恢复矩阵/上传/CAS/计划校验链/grant 生命周期/候选 QA/预览能力门/二进制帧/错误 sanitization/事件与素材 wire 契约/纯逻辑裁剪）均已补可运行测试并实测。两个未勾 goal 的剩余验收（全链路 e2e AOT、生产 agent-worker 真实模型、Android 真机/打包、native 源导入 expo-crypto）确属环境/API 阻塞，非代码缺口，解锁条件见上文复现方法节。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
