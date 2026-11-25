@@ -72,6 +72,7 @@
 - 全套件联合验收（已运行通过）：用独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3 一次性运行全部非 e2e 的 TS 测试——access/authorization/cas/job-events/job-recovery/job-supervisor/media-failure/rpc/store/tool-broker/upload＋contracts/cut/review-bytes 共 **14 文件 64 项测试全绿**（含 worker 契约 schema、review-bytes 真实 ffmpeg preview 字节校验）。仅 editor.e2e / edit-desk.browser.e2e 因 protocol 生成的 AOT 校验产物缺失（需完整 codegen/build，本机 OOM）未纳入。
 - events 游标/隔离测试（已运行通过）：核实 `emit` 同事务原子写入 events 与 outbox、`events()` 读 events 表（outbox 确为只写死表，无读取 bug）；`store.test.ts` 增「afterSeq 过滤／每项目 seq 严格单调无重复／游标到末尾返回空／跨项目事件不串流」用例。本机 vitest 真实运行 store 7 项全过（累计 65 项 TS 测试绿）。
 - 授权矩阵加固（已运行通过）：复核 `authorizeVideoMethod` 发现 `redeem_invitation` 虽为 owner 专属（rpc 内联校验「Only the owner can provision a paired device」），却未列入 MANAGE_METHODS——operator 调用会穿过授权层、仅靠 rpc 内联拦截。将其纳入 MANAGE_METHODS，使设备配对/撤销/导入在授权层统一提前拒绝（纵深防御，rpc 内联校验保留）；authorization.test 补 operator/viewer 对 redeem_invitation 的拒绝断言。本机 vitest 真实运行 authorization 9＋rpc 1 全过。另核实 create_project/redeem_invitation 门控路径无误、viewer 严格只读、无方法落入默认放行。
+- createProject 范围/回滚不变量测试（已运行通过）：核实 `mutate` 为 BEGIN/COMMIT、execute 抛错即 ROLLBACK；`authorize` 首步按凭据 projectIds 拦截。scoped 设备 operator 调 create_project 时，新项目 id 超出凭据范围→快照读取授权失败→整事务回滚，无孤儿项目、无残留 grant。`store.test.ts` 增用例断言：创建抛「no access to this project」、owner 项目数不变、设备 grant 列表为空。本机 vitest 真实运行 store 8 项全过（累计 66 项 TS 测试绿）。另核实 requireRole 秩 viewer<operator<owner，viewer 无法 create_project。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误

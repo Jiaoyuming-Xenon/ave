@@ -405,3 +405,24 @@ describe("events cursor and isolation", () => {
     store.close();
   });
 });
+
+describe("createProject scope and transactional rollback", () => {
+  it("rejects a scoped device creating an out-of-scope project and rolls back fully", async () => {
+    const { store, project } = await fixture();
+    const before = store.listProjects(owner).length;
+    const scopedDevice: EditorPrincipal = {
+      principalId: "device-x",
+      role: "operator",
+      projectIds: [project.projectId],
+    };
+    // The new project id is outside the credential's scope, so the snapshot read
+    // inside the mutation fails authorization and the whole transaction rolls back.
+    expect(() =>
+      store.createProject({ requestId: "dev-create", title: "Out of scope", principal: scopedDevice }),
+    ).toThrow("no access to this project");
+    expect(store.listProjects(owner).length).toBe(before);
+    // The rolled-back grant left the device with no project grants at all.
+    expect(store.listProjects(scopedDevice)).toEqual([]);
+    store.close();
+  });
+});
