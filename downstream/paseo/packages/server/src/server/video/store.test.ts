@@ -475,3 +475,64 @@ describe("plan validation edges", () => {
     store.close();
   });
 });
+
+describe("grant lifecycle edges", () => {
+  async function setup() {
+    const { store, cas, project } = await fixture();
+    const blob = await cas.writeBytes(Buffer.from("not-a-video"), "video/mp4");
+    const asset = {
+      assetId: blob.sha256,
+      original: blob,
+      displayName: "source.mp4",
+      streams: [{ streamUid: "stream:0", streamIndex: 0, kind: "video" as const, codec: "h264", timeBase: { num: "1", den: "30" }, disposition: {} }],
+      presentationIndex: blob,
+      probe: blob,
+      sourceNeverWritable: true as const,
+    };
+    await store.addAsset(project.projectId, asset, "asset", owner);
+    const current = store.project(project.projectId, owner);
+    const { approval } = store.createPlan(draft(current));
+    const { grant } = store.decideApproval(
+      { requestId: "approve", approvalId: approval.approvalId, expectedRevision: current.revision, decision: "approve" },
+      owner,
+    );
+    return { store, cas, current, approval, grant: grant!, asset };
+  }
+
+  it("rejects reusing a consumed grant for a new job request", async () => {
+    const { store, current, approval, grant } = await setup();
+    const jobInput = {
+      projectId: current.projectId,
+      approvalId: approval.approvalId,
+      grantId: grant.grantId,
+      expectedRevision: current.revision,
+      principal: owner,
+    };
+    expect(store.createJob({ ...jobInput, requestId: "job-1" }).deduplicated).toBe(false);
+    // A different requestId bypasses the idempotency cache and hits the consumed check.
+    expect(() => store.createJob({ ...jobInput, requestId: "job-2" })).toThrow("already been consumed");
+    store.close();
+  });
+
+  it("rejects a job when the project changed after approval", async () => {
+    const { store, cas, current, approval, grant } = await setup();
+    const blob2 = await cas.writeBytes(Buffer.from("another-video"), "video/mp4");
+    await store.addAsset(
+      current.projectId,
+      { assetId: blob2.sha256, original: blob2, displayName: "second.mp4", streams: [{ streamUid: "stream:0", streamIndex: 0, kind: "video" as const, codec: "h264", timeBase: { num: "1", den: "30" }, disposition: {} }], presentationIndex: blob2, probe: blob2, sourceNeverWritable: true as const },
+      "asset-2",
+      owner,
+    );
+    expect(() =>
+      store.createJob({
+        requestId: "job-stale",
+        projectId: current.projectId,
+        approvalId: approval.approvalId,
+        grantId: grant.grantId,
+        expectedRevision: current.revision,
+        principal: owner,
+      }),
+    ).toThrow("project changed after approval");
+    store.close();
+  });
+});
