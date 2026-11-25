@@ -9,6 +9,7 @@ import {
   createJobRpc,
   createUploadRpc, getUploadStatusRpc, writeUploadChunkRpc, commitUploadRpc,
   startPlanningRunRpc, steerPlanningRunRpc, followUpPlanningRunRpc, stopPlanningRunRpc, getEventsRpc,
+  analyzeAssetRpc,
   type ApprovalRequest, type BlobRef, type EditorEvent, type PlanningRunStatus, type ProjectSnapshot,
 } from "../shared/contracts/v1.js";
 import { ReviewPlayer } from "./review-player.js";
@@ -43,6 +44,7 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const followUpRun = useRpc(followUpPlanningRunRpc);
   const stopRun = useRpc(stopPlanningRunRpc);
   const readEvents = useRpc(getEventsRpc);
+  const analyze = useRpc(analyzeAssetRpc);
   const [sourceImport, setSourceImport] = useState<SourceImport | null>(null);
   const [confirmed, setConfirmed] = useState(0);
   const [project, setProject] = useState<ProjectSnapshot | null>(null);
@@ -268,6 +270,15 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
               <Text style={muted}>
                 {asset.streams.map((s) => s.codec).join(" / ")} · {asset.original.bytes} 字节
               </Text>
+              {asset.streams.some((s) => s.kind === "video") &&
+                button("分析采样", async () => {
+                  await analyze({
+                    requestId: requestId(`analyze:${asset.assetId}`),
+                    projectId: project.projectId,
+                    assetId: asset.assetId,
+                  });
+                  show(await read({ projectId: project.projectId }));
+                })}
             </DeskControl>
           ))}
           {selected !== "" && (

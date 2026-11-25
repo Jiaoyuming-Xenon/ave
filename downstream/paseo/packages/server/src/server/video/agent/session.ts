@@ -1,16 +1,15 @@
-import { createAgentSession } from "@earendil-works/pi-coding-agent";
-import type { EditorEvent } from "#video-editor/contracts/v1";
+import { createAgentSession, SessionManager, SettingsManager, createExtensionRuntime } from "@earendil-works/pi-coding-agent";
+import { z } from "zod";
+import { VideoToolCallSchema, type EditorEvent } from "#video-editor/contracts/v1";
 import { randomUUID } from "node:crypto";
 import { VIDEO_PLANNER_PROMPT, videoPlannerPromptSignature } from "./prompt.js";
-import { createPlannerTools } from "./tools.js";
-import type { DaemonToWorker, IpcChannel, WorkerToDaemon } from "./ipc.js";
+import { newRequestId, type DaemonToWorker, type IpcChannel, type WorkerToDaemon } from "./ipc.js";
 
 export interface PlannerSessionOptions {
   projectId: string;
   runId: string;
   sessionId: string;
   workspace: string;
-  model: { provider: string; id: string };
   /** SHA-256 of VIDEO_PLANNER_PROMPT supplied by the daemon at init. */
   promptSignature: string;
   channel: IpcChannel<DaemonToWorker, WorkerToDaemon>;
@@ -24,49 +23,118 @@ interface PiSession {
   abort(): Promise<void>;
   dispose(): Promise<void>;
   subscribe(listener: (event: unknown) => void): void;
+  getActiveToolNames(): string[];
+  getCallableToolNames(): string[];
+  getAllTools(): Array<{ name: string }>;
 }
 
+const TOOL_DESCRIPTIONS: Record<string, string> = {
+  get_project_snapshot: "Inspect the current project revision and immutable asset identifiers.",
+  get_asset_metadata: "Inspect the streams of an identified project asset.",
+  get_job_status: "Inspect the daemon-recorded state of a project job.",
+  validate_edit_plan: "Validate a proposed edit without saving or executing it.",
+  submit_edit_plan:
+    "Submit an edit proposal for human review and terminate. This does not approve, render or export.",
+};
+
 /**
- * Create the locked-down planner session. The session runs with noTools:"all"
- * plus only the closed customTools set; the ResourceLoader returns no
- * extensions, skills, prompt templates, themes, context files or MCP servers,
- * and the system prompt is the pinned VIDEO_PLANNER_PROMPT. The daemon-supplied
- * prompt signature must match the compiled-in constant, so the prompt can
- * never be swapped by tool output, files, MCP or extensions. The worker cwd
- * is a host-owned empty workspace, never the source or asset root.
+ * Create the locked-down planner session (same construction as the vetted
+ * worker/closed-session.mjs probe): noTools:"all" plus only the closed
+ * customTools set derived from VideoToolCallSchema; sealed ResourceLoader with
+ * no extensions/skills/themes/prompts/agents files/MCP; pinned system prompt
+ * verified against the daemon-supplied signature; in-memory session/settings
+ * managers (the daemon owns durable state, the worker owns none). The worker
+ * cwd is a host-owned empty workspace, never the source or asset root.
  */
 export async function createPlannerSession(options: PlannerSessionOptions) {
   if (options.promptSignature !== videoPlannerPromptSignature()) {
     throw new Error("VIDEO_PLANNER_PROMPT signature mismatch; refusing to start the worker");
   }
 
-  const tools = createPlannerTools(options.channel);
-  const customTools = Object.fromEntries(
-    Object.entries(tools).map(([name, tool]) => [
-      name,
-      {
-        description: tool.description,
-        parameters: tool.parameters,
-        execute: (toolCallId: string, args: unknown) => tool.execute(toolCallId, args),
-      },
-    ]),
-  );
-
-  const resourceLoader = {
-    async load() {
-      return { systemPrompt: VIDEO_PLANNER_PROMPT, resources: [], extensions: [] };
-    },
+  const invoke = async (call: z.infer<typeof VideoToolCallSchema>) => {
+    const reply = (await options.channel.request({
+      kind: "tool_call",
+      requestId: newRequestId(),
+      call,
+    })) as { ok: boolean; result?: unknown; error?: { code: string; message: string } };
+    if (!reply.ok) {
+      const error = new Error(reply.error?.message ?? "tool call failed");
+      (error as Error & { code?: string }).code = reply.error?.code ?? "TOOL_FAILED";
+      throw error;
+    }
+    return reply.result;
   };
 
-  const session = (await createAgentSession({
+  const extensions = { extensions: [], errors: [], runtime: createExtensionRuntime() };
+  const resources = {
+    getExtensions: () => extensions,
+    getSkills: () => ({ skills: [], diagnostics: [] }),
+    getThemes: () => ({ themes: [], diagnostics: [] }),
+    getPrompts: () => ({ prompts: [], diagnostics: [] }),
+    getAgentsFiles: () => ({ agentsFiles: [] }),
+    getSystemPrompt: () => VIDEO_PLANNER_PROMPT,
+    getSystemPromptSource: () => undefined,
+    getAppendSystemPrompt: () => [],
+    getAppendSystemPromptSources: () => [],
+    extendResources: () => {
+      throw new Error("Planner resources are sealed");
+    },
+    reload: async () => {},
+  };
+
+  const customTools = VideoToolCallSchema.options.map((option) => {
+    const name = option.shape.tool.value as string;
+    const parameters = z.toJSONSchema(option.shape.args, { io: "input" });
+    delete (parameters as Record<string, unknown>).$schema;
+    return {
+      name,
+      label: name,
+      description: TOOL_DESCRIPTIONS[name],
+      parameters,
+      executionMode: "sequential" as const,
+      constrainedSampling:
+        name === "submit_edit_plan" ? { type: "json_schema" as const, strict: "require" as const } : false,
+      async execute(toolCallId: string, args: unknown) {
+        const request = option.parse({ protocolVersion: "1", toolCallId, tool: name, args });
+        const output = await invoke(request);
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          details: output,
+          ...(name === "submit_edit_plan" ? { terminate: true } : {}),
+        };
+      },
+    };
+  });
+  const names = Object.keys(TOOL_DESCRIPTIONS).sort();
+
+  const { session } = (await createAgentSession({
     cwd: options.workspace,
-    model: options.model,
-    tools: { noTools: "all", customTools },
-    resourceLoader,
-  })) as unknown as PiSession;
+    agentDir: options.workspace,
+    resourceLoader: resources,
+    noTools: "all",
+    tools: names,
+    customTools,
+    sessionManager: SessionManager.inMemory(options.workspace),
+    settingsManager: SettingsManager.inMemory({
+      cacheWarming: "off",
+      retry: { enabled: false },
+      compaction: { enabled: false },
+    }),
+  })) as unknown as { session: PiSession };
+
+  for (const inventory of [
+    session.getActiveToolNames(),
+    session.getCallableToolNames(),
+    session.getAllTools().map((t) => t.name),
+  ]) {
+    if (JSON.stringify([...inventory].sort()) !== JSON.stringify(names)) {
+      await session.dispose();
+      throw new Error("Pi planner tool inventory mismatch");
+    }
+  }
 
   let seq = 0;
-  const emitPiEvent = (piEvent: unknown) => {
+  session.subscribe((piEvent: unknown) => {
     const e = piEvent as { type?: string; id?: string; toolCallId?: string };
     const type = typeof e?.type === "string" ? e.type : "agent.unknown";
     if (type === "tool_execution_start" || type === "message_end" || type === "agent_end") {
@@ -84,8 +152,7 @@ export async function createPlannerSession(options: PlannerSessionOptions) {
         payload: {},
       });
     }
-  };
-  session.subscribe(emitPiEvent);
+  });
 
   return {
     session,

@@ -8,6 +8,7 @@ import { execFile } from "node:child_process";
 import { ContentAddressedStore, sha256File } from "./cas.js";
 import { EditorError, editorFailure } from "./errors.js";
 import { assertRenderablePreview } from "./preview-profile.js";
+import { PyWorker } from "./py-worker.js";
 import { EditorStore } from "./store.js";
 import {
   SourceAssetSchema,
@@ -62,6 +63,10 @@ export interface MediaTools {
 
 export class MediaService {
   private readonly uploadsInFlight = new Map<string, Promise<void>>();
+  private readonly py = new PyWorker();
+
+  /** Working sample rate for analysis jobs (CFR grid); VFR sources keep their index ticks. */
+  private static readonly ANALYSIS_RATE = "25/1";
 
   private async withUpload<T>(id: string, task: () => Promise<T>): Promise<T> {
     const previous = this.uploadsInFlight.get(id) ?? Promise.resolve();
@@ -114,6 +119,7 @@ export class MediaService {
       role: "owner",
       projectIds: null,
     });
+    if (job.kind === "analysis") return this.executeAnalysisJob(projectId, jobId, signal);
     this.store.updateJob(projectId, jobId, (current) => ({
       ...current,
       phaseDetail: "reading approved plan",
@@ -377,6 +383,95 @@ export class MediaService {
       );
     }
     return { document, streams };
+  }
+
+  /**
+   * Analysis job: run the closed Python sampling kernel over the immutable
+   * presentation index of one asset and store the map as a QA artifact.
+   * Read-only against the source; never re-encodes, never writes outside CAS.
+   */
+  async executeAnalysisJob(projectId: string, jobId: string, signal: AbortSignal): Promise<JobSnapshot> {
+    const worker = { principalId: "worker", role: "owner", projectIds: null } as EditorPrincipal;
+    const job = this.store.job(projectId, jobId, worker);
+    const assetId = job.analysisAssetId;
+    if (!assetId) editorFailure("INVALID_ARGUMENT", "Analysis job has no target asset");
+    this.store.updateJob(projectId, jobId, (current) => ({
+      ...current,
+      phaseDetail: "verifying source hash",
+    }));
+    const project = this.store.project(projectId, worker);
+    const asset = project.assets.find((a) => a.assetId === assetId);
+    if (!asset || (await sha256File(this.cas.pathFor(asset.original))) !== asset.original.sha256)
+      editorFailure("ARTIFACT_HASH_MISMATCH", "Source changed before analysis");
+    this.throwIfCancelled(signal);
+
+    const indexRef = asset.presentationIndex;
+    const indexBytes = await this.cas.readBytes(indexRef);
+    const indexDoc = JSON.parse(indexBytes.toString("utf8")) as {
+      sourceSha256: string;
+      streams: Array<{ streamIndex: number; streamUid: string; timeBase: { num: string; den: string } }>;
+      frames: Array<{ stream_index: number; media_type: string; pts?: string; duration?: string }>;
+    };
+    const support = await this.py
+      .support(signal)
+      .then((s) => s)
+      .catch((error) => ({ unavailable: String(error) }));
+
+    this.store.updateJob(projectId, jobId, (current) => ({
+      ...current,
+      phaseDetail: "running sampling kernel",
+    }));
+    const streams: unknown[] = [];
+    for (const stream of indexDoc.streams) {
+      const frames = indexDoc.frames.filter(
+        (f) => f.stream_index === stream.streamIndex && f.media_type === "video",
+      );
+      if (!frames.length) continue;
+      this.throwIfCancelled(signal);
+      const map = await this.py.samplingMap(
+        {
+          indexPath: this.cas.pathFor(indexRef),
+          indexSha256: indexRef.sha256,
+          sourceSha256: asset.original.sha256,
+          streamUid: stream.streamUid,
+          first: 0,
+          stop: frames.length,
+          rate: MediaService.ANALYSIS_RATE,
+        },
+        signal,
+      );
+      streams.push({ streamUid: stream.streamUid, timeBase: stream.timeBase, frames: frames.length, map });
+    }
+    if (!streams.length) editorFailure("CAPABILITY_UNAVAILABLE", "The asset has no video stream");
+
+    const report = await this.cas.writeJson({
+      schemaVersion: "video.analysis/v1",
+      reportId: jobId,
+      assetId,
+      sourceSha256: asset.original.sha256,
+      indexSha256: indexRef.sha256,
+      rate: MediaService.ANALYSIS_RATE,
+      workerSupport: support,
+      streams,
+    });
+    this.throwIfCancelled(signal);
+    const artifact = {
+      artifactId: `${jobId}:analysis`,
+      projectId,
+      jobId,
+      revision: job.revision,
+      kind: "qa" as const,
+      blob: report,
+    };
+    this.store.updateJob(projectId, jobId, (current) => ({
+      ...current,
+      state: "completed",
+      phaseDetail: "analysis complete",
+      progress: { completedUnits: String(streams.length), totalUnits: String(streams.length) },
+      artifacts: [...current.artifacts, artifact],
+      error: undefined,
+    }));
+    return this.store.job(projectId, jobId, worker);
   }
 
   private async presentationIndex(

@@ -11,6 +11,7 @@ import {
   PlanningRunRequestSchema,
   StartPlanningRunInputSchema,
   SteerPlanningRunInputSchema,
+  AnalyzeAssetInputSchema,
   type EditorPrincipal,
 } from "#video-editor/contracts/v1";
 import { decodeFramedChunk } from "#video-editor/bytes";
@@ -115,6 +116,12 @@ export class EditorRpcService {
       case "video.v1.get_planning_run": {
         const request = PlanningRunRequestSchema.parse(input);
         return this.editor.agents.status(request.projectId, request.runId, principal);
+      }
+      case "video.v1.analyze_asset": {
+        const request = AnalyzeAssetInputSchema.parse(input);
+        const result = this.editor.store.createAnalysisJob({ ...request, principal });
+        this.editor.jobs.enqueue(request.projectId, result.job.jobId);
+        return result;
       }
       case "video.v1.create_invitation":
       case "video.v1.redeem_invitation":
