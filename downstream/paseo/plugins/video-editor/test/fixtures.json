@@ -360,5 +360,53 @@
     "schema": "CommitUploadRequest",
     "valid": false,
     "value": { "requestId": "r1", "uploadId": "u", "finalSha256": "short" }
+  },
+  {
+    "name": "approval grant preview purpose",
+    "schema": "ApprovalGrant",
+    "valid": true,
+    "value": { "grantId": "g", "approvalId": "a", "projectId": "p", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "preview", "approvedByDeviceId": "owner", "approvedAt": "2026-11-25T00:00:00Z", "expiresAt": "2026-11-26T00:00:00Z" }
+  },
+  {
+    "name": "approval grant purpose excludes input",
+    "schema": "ApprovalGrant",
+    "valid": false,
+    "value": { "grantId": "g", "approvalId": "a", "projectId": "p", "subjectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseTimelineRevision": "1", "purpose": "input", "approvedByDeviceId": "owner", "approvedAt": "2026-11-25T00:00:00Z", "expiresAt": "2026-11-26T00:00:00Z" }
+  },
+  {
+    "name": "write upload chunk binds offset length and hash",
+    "schema": "WriteUploadChunk",
+    "valid": true,
+    "value": { "requestId": "r1", "uploadId": "u", "offset": "0", "length": "4", "chunkSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+  },
+  {
+    "name": "write upload chunk hash must be sha256",
+    "schema": "WriteUploadChunk",
+    "valid": false,
+    "value": { "requestId": "r1", "uploadId": "u", "offset": "0", "length": "4", "chunkSha256": "short" }
+  },
+  {
+    "name": "upload request addresses project and upload",
+    "schema": "UploadRequest",
+    "valid": true,
+    "value": { "projectId": "p", "uploadId": "u" }
+  },
+  {
+    "name": "upload request requires an upload id",
+    "schema": "UploadRequest",
+    "valid": false,
+    "value": { "projectId": "p" }
+  },
+  {
+    "name": "job request addresses project and job",
+    "schema": "JobRequest",
+    "valid": true,
+    "value": { "projectId": "p", "jobId": "j" }
+  },
+  {
+    "name": "job request requires a job id",
+    "schema": "JobRequest",
+    "valid": false,
+    "value": { "projectId": "p" }
   }
 ]
