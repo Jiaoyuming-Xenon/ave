@@ -168,5 +168,23 @@
     "schema": "UploadStatus",
     "valid": false,
     "value": { "uploadId": "u", "chunkSize": "262144", "nextOffset": "-1" }
+  },
+  {
+    "name": "terminal job event reconciles devices",
+    "schema": "EditorEvent",
+    "valid": true,
+    "value": { "protocolVersion": "1", "projectId": "p", "eventId": "e", "seq": "8", "occurredAt": "2026-11-25T10:00:00Z", "type": "job.state.changed", "payload": { "jobId": "j", "state": "cancelled" } }
+  },
+  {
+    "name": "event seq is not a JSON number",
+    "schema": "EditorEvent",
+    "valid": false,
+    "value": { "protocolVersion": "1", "projectId": "p", "eventId": "e", "seq": 8, "occurredAt": "2026-11-25T10:00:00Z", "type": "job.state.changed", "payload": {} }
+  },
+  {
+    "name": "event type cannot be empty",
+    "schema": "EditorEvent",
+    "valid": false,
+    "value": { "protocolVersion": "1", "projectId": "p", "eventId": "e", "seq": "8", "occurredAt": "2026-11-25T10:00:00Z", "type": "", "payload": {} }
   }
 ]
