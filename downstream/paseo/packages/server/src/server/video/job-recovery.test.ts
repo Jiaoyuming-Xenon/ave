@@ -8,7 +8,7 @@ import { EditorStore } from "./store.js";
 
 const owner: EditorPrincipal = { principalId: "owner", role: "owner", projectIds: null };
 
-async function activeJobFixture(root: string) {
+async function activeJobFixture(root: string, state: string = "rendering_preview") {
   const store = await EditorStore.create(root);
   const cas = new ContentAddressedStore(path.join(root, "cas"));
   await cas.initialize();
@@ -94,7 +94,7 @@ async function activeJobFixture(root: string) {
   });
   store.updateJob(project.projectId, job.jobId, (snapshot) => ({
     ...snapshot,
-    state: "rendering_preview",
+    state: state as typeof snapshot.state,
     phaseDetail: "rendering",
   }));
   return { store, projectId: project.projectId, jobId: job.jobId };
@@ -124,5 +124,33 @@ it("daemon restart recovers an interrupted job and emits exactly one terminal st
     again.close();
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+it("recovers in-flight states to failed but leaves settled review/paused jobs untouched", async () => {
+  for (const state of ["pausing", "cancel_requested", "rendering_final", "validating", "analyzing"]) {
+    const root = await mkdtemp(path.join(tmpdir(), "job-recovery-matrix-"));
+    try {
+      const first = await activeJobFixture(root, state);
+      first.store.close();
+      const reopened = await EditorStore.create(root);
+      const recovered = reopened.job(first.projectId, first.jobId, owner);
+      expect(recovered.state).toBe("failed");
+      expect(recovered.error).toMatchObject({ code: "NEEDS_RECONCILIATION" });
+      reopened.close();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+  for (const state of ["awaiting_review", "paused"]) {
+    const root = await mkdtemp(path.join(tmpdir(), "job-recovery-skip-"));
+    try {
+      const first = await activeJobFixture(root, state);
+      first.store.close();
+      const reopened = await EditorStore.create(root);
+      expect(reopened.job(first.projectId, first.jobId, owner).state).toBe(state);
+      reopened.close();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   }
 });
