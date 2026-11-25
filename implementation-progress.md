@@ -18,7 +18,7 @@
 | ② Android 真机/打包 | 需真机＋electron 打包 | 本机无真机、build OOM | 环境阻塞 |
 | ② native 源素材导入 | 需 expo-crypto 二进制 digest | API 不可核实，盲写风险高，暂不做 | 暂缓 |
 
-本机真实运行汇总：**26 文件 171 项 TS 测试全绿**（18 个 video-editor 文件 111 项＋import-source 9＋web 3＋review-bytes-extra 3＋tool-broker-extra 1＋tool-broker-snapshot 1＋protocol daemon-endpoints-extra 11／connection-offer-extra 7／messages.wire-compat 25；独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3＋react-native stub，绕开 OOM 的 npm ci）；另上游 protocol daemon-endpoints 26／connection-offer 5／chunked-transport 34 项亦本机跑通（goal① 设备连接/配对/分帧佐证，chunked 1 项需 dist 构建属环境阻塞）；**3 个 Python 内核 38 检查**＋**worker 契约 35 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。glob 全量回归仅 editor.e2e（缺生成 AOT）与 edit-desk.browser.e2e（缺 esbuild/浏览器构建）2 文件收集失败，属已知环境阻塞。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
+本机真实运行汇总：**27 文件 178 项 TS 测试全绿**（18 个 video-editor 文件 111 项＋import-source 9＋web 3＋web-mount 7＋review-bytes-extra 3＋tool-broker-extra 1＋tool-broker-snapshot 1＋protocol daemon-endpoints-extra 11／connection-offer-extra 7／messages.wire-compat 25；独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3＋react-native stub，绕开 OOM 的 npm ci）；另上游 protocol daemon-endpoints 26／connection-offer 5／chunked-transport 34 项亦本机跑通（goal① 设备连接/配对/分帧佐证，chunked 1 项需 dist 构建属环境阻塞）；**3 个 Python 内核 38 检查**＋**worker 契约 35 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。glob 全量回归仅 editor.e2e（缺生成 AOT）与 edit-desk.browser.e2e（缺 esbuild/浏览器构建）2 文件收集失败，属已知环境阻塞。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
 
 ### 复现验收方法（OOM 受限环境，2CPU/3.9GB）
 
@@ -133,6 +133,7 @@
 - web 工作台源校验测试（已运行通过，goal② 共享桌面/web 源导入）：`client/web.ts` 的 digestSource 是 web 平台 SHA-256 源校验路径（Platform.OS 门＋crypto.subtle.digest）。新增 `test/web.test.ts`（3 项）以 react-native stub（Platform.OS="web"，Node 自带 crypto.subtle）驱动：SHA-256 已知答案向量（"abc"→ba7816bf…、空缓冲→e3b0c442…，先经 Node crypto.subtle 核验）、输出 64 位小写 hex 格式、非 web 平台（mutate stub OS="android"）失败闭合抛「当前工作台不支持文件校验」。mount* DOM 函数需浏览器环境未测。本机真实运行 3 项全绿（累计 24 文件 167 项 TS 测试绿）。
 - 评审/交付字节读取补口测试（已运行通过，goal① 评审代理交付）：`review-bytes.test.ts` 已覆盖交付身份/类型门与分块校验（valid/wrong revision/damaged chunk/wrong complete hash）；新增 `review-bytes-extra.test.ts`（3 项）补 AbortSignal 门（预 abort 在读取前抛 AbortError）与 blob 尺寸边界（空 blob bytes="0" 拒、>64 MiB 在分配输出缓冲前拒，均「格式不匹配或超过工作台的 64 MiB 限制」）。readReviewBytes 的 read/hash/signal 均依赖注入，纯逻辑可独立测。本机真实运行 3 项全绿（累计 25 文件 170 项 TS 测试绿）。
 - planner 快照资产截断测试（已运行通过，goal② 大项目分页）：新增 `tool-broker-snapshot.test.ts`（1 项）驱动 65 个资产（同内容 blob、唯一 assetId/requestId），固化 get_project_snapshot 的资产列表截断分支——assetCount=65、hasMoreAssets=true、assets 截断为 64（slice 0,64）。此前 broker 测试仅单资产，未覆盖 >64 截断。本机真实运行通过（累计 26 文件 171 项 TS 测试绿）。
+- 共享桌面 DOM 交付适配器测试（已运行通过，goal② 共享桌面 UI）：`client/web.ts` 的 mount* 是纯 DOM 适配器（Node 自带 Blob/URL.createObjectURL，仅需 stub document/HTMLElement）。新增 `test/web-mount.test.ts`（7 项）：mountDeliveryLink 按 purpose＋sha256 前 12 位命名下载（export→`export-<12>.mp4`/「保存成品视频（MP4）」、manifest→`.json`/「保存导出清单（JSON）」）、畸形 sha256（非 hex/大写）与非元素 parent 拒「无法保存交付文件」、cleanup 移除链接；mountReviewVideo 挂载 controls 视频＋aria-label＋返回 cleanup、非元素 parent 抛「无法显示视频」；mountSourcePicker 挂载 video file input＋aria-label「选择本机视频」＋cleanup、非元素 parent 无操作返回 undefined。React 组件 edit-desk.tsx/review-player.tsx 需 React 渲染＋构建仍未测。本机真实运行 7 项全绿（累计 27 文件 178 项 TS 测试绿）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
