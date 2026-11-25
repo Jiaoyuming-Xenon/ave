@@ -1211,6 +1211,14 @@ export class EditorStore {
       this.database
         .prepare("UPDATE jobs SET document = ?, active = 0 WHERE job_id = ?")
         .run(JSON.stringify(recovered), job.jobId);
+      // Recovery bypasses updateJob's worker path, so emit the terminal event explicitly:
+      // remote viewers/operators reconciling via get_events must see the restart failure,
+      // not a job stuck forever in its last rendering state.
+      this.emit(job.projectId, "job.state.changed", {
+        jobId: job.jobId,
+        state: recovered.state,
+        phaseDetail: recovered.phaseDetail,
+      });
     }
   }
 
