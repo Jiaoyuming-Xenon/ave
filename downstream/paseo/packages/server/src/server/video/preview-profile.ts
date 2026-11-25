@@ -49,14 +49,6 @@ export function assertRenderablePreview(draft: EditPlanDraftV1): void {
   const first = ops[0]!;
   let cursor: Rational = { num: "0", den: "1" };
   for (const op of ops) {
-    if (
-      op.source.assetId !== first.source.assetId ||
-      op.source.streamUid !== first.source.streamUid
-    )
-      editorFailure(
-        "CAPABILITY_UNAVAILABLE",
-        "Multi-asset or multi-stream plans are not supported by this preview profile",
-      );
     if (!rationalEquals(op.recordRange.start, cursor))
       editorFailure(
         "CAPABILITY_UNAVAILABLE",

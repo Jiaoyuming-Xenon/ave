@@ -134,14 +134,19 @@ export class MediaService {
     if (job.kind === "export") return this.deliver(job, plan, signal);
     if (job.kind !== "preview" && job.kind !== "final")
       editorFailure("CAPABILITY_UNAVAILABLE", "Not a render job");
-    const asset = project.assets.find((a) => a.assetId === plan.trimOperations[0]?.source.assetId);
-    if (!asset || (await sha256File(this.cas.pathFor(asset.original))) !== asset.original.sha256)
-      editorFailure("ARTIFACT_HASH_MISMATCH", "Source changed before render");
+    const assets = new Map<string, SourceAsset>();
+    for (const op of plan.trimOperations) {
+      const asset = project.assets.find((a) => a.assetId === op.source.assetId);
+      if (!asset || (await sha256File(this.cas.pathFor(asset.original))) !== asset.original.sha256)
+        editorFailure("ARTIFACT_HASH_MISMATCH", "A source changed before render");
+      assets.set(asset.assetId, asset);
+    }
+    const firstAsset = assets.get(plan.trimOperations[0]!.source.assetId)!;
     const directory = await mkdtemp(path.join(tmpdir(), "video-render-"));
     let outputBlob: BlobRef;
     try {
       const output = path.join(directory, "candidate.mp4");
-      await this.render(asset, plan, job.kind, output, signal);
+      await this.render(assets, firstAsset, plan, job.kind, output, signal);
       this.throwIfCancelled(signal);
       outputBlob = await this.cas.importFile(output, "video/mp4");
     } finally {
@@ -149,10 +154,11 @@ export class MediaService {
     }
     const probe = await this.probe(this.cas.pathFor(outputBlob));
     await this.verifyCandidateDecode(outputBlob, signal);
-    checkCandidate(probe.document, asset, plan, job.kind);
+    const audioExpected = [...assets.values()].some((a) => a.streams.some((s) => s.kind === "audio"));
+    checkCandidate(probe.document, firstAsset, plan, job.kind, audioExpected);
     const reviewProxy = job.kind === "final" ? await this.createFinalReviewProxy(outputBlob, signal) : undefined;
     if (reviewProxy) {
-      checkCandidate((await this.probe(this.cas.pathFor(reviewProxy))).document, asset, plan, "preview");
+      checkCandidate((await this.probe(this.cas.pathFor(reviewProxy))).document, firstAsset, plan, "preview", audioExpected);
       await this.verifyCandidateDecode(reviewProxy, signal);
     }
     const build = await this.run(this.tools.ffmpeg, ["-version"]);
@@ -632,7 +638,8 @@ export class MediaService {
   }
 
   private async render(
-    asset: SourceAsset,
+    assets: Map<string, SourceAsset>,
+    firstAsset: SourceAsset,
     plan: AcceptedEditPlan,
     kind: "preview" | "final",
     output: string,
@@ -643,30 +650,41 @@ export class MediaService {
       editorFailure("CAPABILITY_UNAVAILABLE", "The approved backend is unavailable");
     const ops = plan.trimOperations;
     const first = ops[0]!;
-    const video = asset.streams.find(
+    const firstVideo = firstAsset.streams.find(
       (s) => s.streamUid === first.source.streamUid && s.kind === "video",
     );
-    const audio = asset.streams.filter((s) => s.kind === "audio");
-    if (!video || audio.length > 1 || asset.streams.length !== audio.length + 1)
-      editorFailure(
-        "CAPABILITY_UNAVAILABLE",
-        "Only one video and at most one audio stream are supported",
-      );
-    // One input per segment; each segment is trimmed in source time, rebased to
-    // zero, then concatenated in record order. Source PTS timing is preserved
-    // per segment (vfr), so VFR sources stay VFR through the concat.
+    if (!firstVideo) editorFailure("CAPABILITY_UNAVAILABLE", "The first trim has no video stream");
+    // Multi-asset concat: every segment's video must share the first segment's
+    // geometry; mismatched geometry is normalized per segment before concat.
+    const targetW = firstVideo.width ?? 0;
+    const targetH = firstVideo.height ?? 0;
+    // One input per segment (each from its own asset); segments are trimmed in
+    // source time, rebased to zero, normalized, then concatenated in record
+    // order. Source PTS timing is preserved per segment (vfr).
     const args = ["-v", "error", "-xerror", "-nostdin"];
     const filters: string[] = [];
     const audioOps = new Map(plan.audioOperations.map((op) => [op.clipId, op]));
+    const audioSegments: number[] = [];
     ops.forEach((op, i) => {
+      const asset = assets.get(op.source.assetId)!;
+      const video = asset.streams.find(
+        (s) => s.streamUid === op.source.streamUid && s.kind === "video",
+      );
+      if (!video) editorFailure("CAPABILITY_UNAVAILABLE", `Segment ${i} has no video stream`);
+      const audio = asset.streams.filter((s) => s.kind === "audio");
+      if (audio.length > 1) editorFailure("CAPABILITY_UNAVAILABLE", "At most one audio stream per asset");
       args.push("-i", this.cas.pathFor(asset.original));
       const range = `start=${rationalSeconds(op.sourceRange.start)}:duration=${rationalSeconds(op.sourceRange.duration)}`;
-      filters.push(`[${i}:${video.streamIndex}]trim=${range},setpts=PTS-STARTPTS[vs${i}]`);
+      let vchain = `[${i}:${video.streamIndex}]trim=${range},setpts=PTS-STARTPTS`;
+      if (targetW && targetH && (video.width !== targetW || video.height !== targetH))
+        vchain += `,scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2`;
+      vchain += `,setsar=1[vs${i}]`;
+      filters.push(vchain);
       if (audio[0]) {
+        audioSegments.push(i);
         let chain = `[${i}:${audio[0].streamIndex}]atrim=${range},asetpts=PTS-STARTPTS`;
         const audioOp = audioOps.get(op.clipId);
         if (audioOp) {
-          // gainMilli is milli-decibels; mute wins over gain.
           const gainDb = audioOp.mute ? "-inf" : (Number(audioOp.gainMilli) / 1000).toFixed(3);
           chain += `,volume=${gainDb}dB`;
         }
@@ -674,9 +692,9 @@ export class MediaService {
       }
     });
     const vLabels = ops.map((_, i) => `[vs${i}]`).join("");
-    const aLabels = audio[0] ? ops.map((_, i) => `[as${i}]`).join("") : "";
+    const aLabels = audioSegments.map((i) => `[as${i}]`).join("");
     filters.push(`${vLabels}concat=n=${ops.length}:v=1:a=0[vcat]`);
-    if (audio[0]) filters.push(`${aLabels}concat=n=${ops.length}:v=0:a=1[acat]`);
+    if (audioSegments.length) filters.push(`${aLabels}concat=n=${audioSegments.length}:v=0:a=1[acat]`);
     filters.push(
       kind === "preview"
         ? "[vcat]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1[vout]"
@@ -727,7 +745,7 @@ export class MediaService {
       "-pix_fmt",
       "yuv420p",
     );
-    if (audio[0])
+    if (audioSegments.length)
       args.push("-map", "[acat]", "-c:a", "aac", "-ar", "48000");
     args.push("-movflags", "+faststart", output);
     try {
@@ -813,20 +831,22 @@ function checkCandidate(
   asset: SourceAsset,
   plan: AcceptedEditPlan,
   kind: "preview" | "final",
+  audioExpected = asset.streams.some((s) => s.kind === "audio"),
 ): void {
   const video = doc.streams.find((s) => s.codec_type === "video");
   const source = asset.streams.find((s) => s.kind === "video");
   const width = kind === "final" ? source?.width : 640;
   const height = kind === "final" ? source?.height : 360;
+  const expectedStreams = 1 + (audioExpected ? 1 : 0);
   if (
     !video ||
     video.codec_name !== "h264" ||
     video.width !== width ||
     video.height !== height ||
-    doc.streams.length !== asset.streams.length
+    doc.streams.length !== expectedStreams
   )
     editorFailure("QA_FAILED", "Unexpected candidate streams or dimensions");
-  assertCandidateAudio(asset.streams, doc.streams);
+  if (audioExpected) assertCandidateAudio(asset.streams, doc.streams);
   let total = { num: 0n, den: 1n };
   for (const op of plan.trimOperations) {
     total = {
