@@ -5,6 +5,7 @@ import { MediaService } from "./media.js";
 import { EditorJobSupervisor } from "./jobs.js";
 import { EditorStore } from "./store.js";
 import { EditorRpcService } from "./rpc.js";
+import { AgentRunController } from "./agent/controller.js";
 import type { EditorPrincipal } from "#video-editor/contracts/v1";
 
 export interface EditorServiceOptions {
@@ -25,6 +26,7 @@ export class EditorService {
   readonly media: MediaService;
   readonly jobs: EditorJobSupervisor;
   readonly rpc: EditorRpcService;
+  readonly agents: AgentRunController;
 
   constructor(options: EditorServiceOptions & { store: EditorStore }) {
     const root = path.join(options.paseoHome, "video-editor");
@@ -37,6 +39,7 @@ export class EditorService {
     });
     this.jobs = new EditorJobSupervisor(this.store, this.media);
     this.rpc = new EditorRpcService(this);
+    this.agents = new AgentRunController(this.store);
   }
 
   async start(): Promise<void> {
@@ -46,6 +49,7 @@ export class EditorService {
   }
 
   async stop(): Promise<void> {
+    await this.agents.disposeAll();
     await this.jobs.stop();
     this.store.close();
   }
