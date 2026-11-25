@@ -39,7 +39,7 @@
 - [x] 更新架构图、产品、Agent、媒体、客户端、接口、团队、发布、风险、上游锁和参考恢复脚本；Photo/Effect/SoundCraft 不进入首版。
 - [x] 主仓库与无 `.git`/参考检出的干净源码副本分别通过 18 份 Markdown、2 份 SVG 校验；架构图重新渲染检查，FilmCraft commit 与依赖锁核对通过。
 - [x] FilmCraft 以 `upstream.json` 明示的稀疏范围恢复并核验干净；完整历史恢复遇到多次网络 EOF，未完成全量源码包下载，中间状态保留为本地忽略备份。
-- [ ] 构建 FilmCraft 并执行 E13 真实媒体/性能/三平台对照；本轮只做源码与文档调研，不宣称后端已运行或已验收。
+- [x] 构建 FilmCraft 并在 Linux headless 实跑 E13 真实媒体双跑：固定 commit `ba6fe105` 经 `cargo build --locked -p filmcraft-cli` 构建 CLI 成功；与 FFmpeg 双跑 CFR/VFR/多流/音频/字幕样本及 kill/restart/离线测试。仅 CFR A/V 白名单（单段 trim + h264/aac 导出、音频导出）达标，VFR 被归一化为序列 CFR、字幕/多音轨不透传，故不采用该后端承担这些能力。证据 [`research/e13-filmcraft.md`](research/e13-filmcraft.md)、[`scripts/check_filmcraft_e13.py`](scripts/check_filmcraft_e13.py)（退出 0）。桌面/Android/远程三平台仍未验证。
 
 ## 验证边界
 

@@ -243,10 +243,14 @@
 | 方案 | 优点 | 不可接受/代价 | 结论 |
 | --- | --- | --- | --- |
 | 原生 MCP 全量暴露给 Agent，GUI 直接嵌入整套 FilmCraft | 最快获得大量按钮与编辑能力 | 无目录限制、无审批/严格 schema、双项目/Job 状态、UI 技术栈分裂，650+ 命令增加规划与误操作面 | 拒绝作为生产路径；仅用于隔离探针 |
-| 本项目统一 EditGraph/EditCommand，FilmCraft 做独立 Rust 后端，GUI/Agent 共用 daemon 命令 | 保留现有安全、审批、恢复和生成链；GUI 手动与 Agent 结果天然可比较/撤销；按能力路由可回退 | 需要写适配器、操作映射和真实媒体矩阵 | **采用，待 E13 探针** |
+| 本项目统一 EditGraph/EditCommand，FilmCraft 做独立 Rust 后端，GUI/Agent 共用 daemon 命令 | 保留现有安全、审批、恢复和生成链；GUI 手动与 Agent 结果天然可比较/撤销；按能力路由可回退 | 需要写适配器、操作映射和真实媒体矩阵 | 接受（E13 已落档，仅 CFR A/V 白名单开放） |
 | 完全不采用，只 FFmpeg | 最少依赖 | 放弃现成 NLE、关键帧参数、调色/混音、代理、交换格式和 command-first 设计 | 保留为兼容/QA 与未覆盖能力后端，而非唯一方向 |
 | 一次引入 Photo/Effect/SoundCraft | 功能广 | 多套项目/时间/任务事实源、alpha 风险、打包和许可闭包膨胀 | 首版排除，未来独立适配器评审 |
 
 最终边界：GUI 手动工具和 Agent 规划共用 `EditCommand`/EditGraph，**不是两套执行逻辑**。FilmCraft 只消费受控 staging 中的源资产和 canonical operation，输出必须回 CAS；不拥有用户项目、审批、CAS、远程连接或最终 Job 状态。FFmpeg 仍是 ffprobe、VFR/多流/附件、生成回合成和独立 QA 的基准后端。首版不把 FilmCraft WASM 放进 renderer，也不将 egui 窗口当主工作台；可选“专家模式”另开 FilmCraft 窗口只能作用于派生副本并显式重导入。
 
 - 成品审片复测：根快照与本地 downstream 同名文件逐字节一致。首次运行缺少 protocol/dist/plugin-requirements.js，插件编译子进程未能导入 workspace 依赖；先构建依赖再复验。
+
+### E13 实测落档（2026-11-25）
+
+- 固定 commit `ba6fe105` 经 `cargo build --locked -p filmcraft-cli` 构建成功（`filmcraft-cli 0.20.1`）；与 FFmpeg 静态构建双跑 CFR/VFR/多流/音频/字幕样本及 kill/restart/离线测试：仅 CFR A/V 白名单（单段 trim + h264/aac 导出、音频导出）达标；VFR 被归一化为序列 CFR（不保留源 PTS），字幕流与多音轨在 h264 导出中不透传；kill -9 后项目 revision 完好且可重导出；离线素材 fail-closed（列出 `offlineMedia`、退出码 1，`--allow-offline` 显式放行）。证据见 [research/e13-filmcraft.md](research/e13-filmcraft.md)，复现：`python3 -I scripts/check_filmcraft_e13.py`。
