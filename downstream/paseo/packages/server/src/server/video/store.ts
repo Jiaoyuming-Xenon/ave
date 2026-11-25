@@ -216,6 +216,30 @@ export class EditorStore {
     return { projectId, title, revision };
   }
 
+  /** Projects the principal may open: all for the owner, only scoped grants for a paired device. */
+  listProjects(principal: EditorPrincipal): Array<{ projectId: string; title: string; revision: string }> {
+    type Row = { project_id: string; title: string; revision: string };
+    const summarize = (row: Row) => ({
+      projectId: row.project_id,
+      title: row.title,
+      revision: row.revision,
+    });
+    if (principal.role === "owner" && principal.projectIds === null) {
+      const rows = this.database
+        .prepare("SELECT project_id, title, revision FROM projects ORDER BY created_at, project_id")
+        .all() as Row[];
+      return rows.map(summarize);
+    }
+    const rows = this.database
+      .prepare(
+        "SELECT p.project_id, p.title, p.revision FROM projects p JOIN project_grants g ON g.project_id = p.project_id WHERE g.principal_id = ? ORDER BY p.created_at, p.project_id",
+      )
+      .all(principal.principalId) as Row[];
+    return rows
+      .filter((row) => principal.projectIds === null || principal.projectIds.includes(row.project_id))
+      .map(summarize);
+  }
+
   project(projectId: string, principal: EditorPrincipal): ProjectSnapshot {
     this.authorize(projectId, principal, "viewer");
     const row = this.projectRow(projectId);

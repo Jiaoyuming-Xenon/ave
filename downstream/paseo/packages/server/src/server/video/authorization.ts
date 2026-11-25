@@ -10,6 +10,7 @@ export interface EditorCaller {
 
 const READ_METHODS = new Set([
   "video.v1.get_capabilities",
+  "video.v1.list_projects",
   "video.v1.get_project",
   "video.v1.get_job",
   "video.v1.get_events",

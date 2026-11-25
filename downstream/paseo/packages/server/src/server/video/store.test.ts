@@ -298,3 +298,28 @@ describe("EditorStore durable workflow", () => {
     reopened.close();
   });
 });
+
+describe("listProjects", () => {
+  it("owner sees every project; a paired device sees only its scoped grants", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "editor-list-"));
+    roots.push(root);
+    const store = await EditorStore.create(root);
+    const a = store.createProject({ requestId: "a", title: "A", principal: owner });
+    const b = store.createProject({ requestId: "b", title: "B", principal: owner });
+    expect(store.listProjects(owner).map((p) => p.projectId).sort()).toEqual(
+      [a.projectId, b.projectId].sort(),
+    );
+    store.registerDevice({ projectId: a.projectId, principalId: "device-1", role: "viewer", actor: owner });
+    const device: EditorPrincipal = { principalId: "device-1", role: "viewer", projectIds: [a.projectId] };
+    expect(store.listProjects(device)).toEqual([
+      { projectId: a.projectId, title: "A", revision: a.revision },
+    ]);
+    // A grant outside the credential's scope is still filtered out.
+    store.registerDevice({ projectId: b.projectId, principalId: "device-1", role: "viewer", actor: owner });
+    expect(store.listProjects(device).map((p) => p.projectId)).toEqual([a.projectId]);
+    // An unpaired principal sees nothing.
+    const stranger: EditorPrincipal = { principalId: "nobody", role: "viewer", projectIds: null };
+    expect(store.listProjects(stranger)).toEqual([]);
+    store.close();
+  });
+});
