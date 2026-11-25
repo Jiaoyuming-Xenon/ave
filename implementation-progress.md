@@ -18,7 +18,7 @@
 | ② Android 真机/打包 | 需真机＋electron 打包 | 本机无真机、build OOM | 环境阻塞 |
 | ② native 源素材导入 | 需 expo-crypto 二进制 digest | API 不可核实，盲写风险高，暂不做 | 暂缓 |
 
-本机真实运行汇总：**18 文件 111 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 35 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
+本机真实运行汇总：**19 文件 122 项 TS 测试全绿**（18 个 video-editor 文件 111 项＋protocol daemon-endpoints-extra 11 项；独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；另上游 protocol daemon-endpoints.test.ts 26 项亦本机跑通（goal① 设备连接逻辑佐证）；**3 个 Python 内核 38 检查**＋**worker 契约 35 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
 
 ### 复现验收方法（OOM 受限环境，2CPU/3.9GB）
 
@@ -125,6 +125,7 @@
 - worker 能力契约 fixtures（已运行通过，TS＋Python 双测）：`fixtures.json` 增 2 个 WorkerProfile 样例——声明 colorSpaces 的合法 profile vs maxWidth=0 拒绝（须正整数）。WorkerProfile 是 CapabilitySet.workerProfiles 的元素，固化 worker 能力申报形状。本机真实运行 TS contracts 31 项＋Python「31 wire fixtures against 40 offline definitions」双过（累计 18 文件 107 项 TS 测试绿）。
 - 编辑计划 wire fixtures（已运行通过，TS＋Python 双测）：`fixtures.json` 增 2 个 EditPlanDraftV1 样例——单段 trim 的合法草稿（含完整 trimOperations/source 流引用/有理数范围/各操作数组/maxCostMicros）vs intent 为空拒绝（min 1）。EditPlanDraftV1 是 propose_cut→create_plan 工作流的核心对象，固化其 wire 形状与 TS/Python 判定一致。本机真实运行 TS contracts 33 项＋Python「33 wire fixtures against 40 offline definitions」双过（累计 18 文件 109 项 TS 测试绿）。
 - 审批请求 wire fixtures（已运行通过，TS＋Python 双测）：`fixtures.json` 增 2 个 ApprovalRequest 样例——pending edit_plan 审批（含 requiredInputs/diffSummary/generationCostCapMicros/expiresAt datetime）vs subjectType="bogus" 拒绝（枚举门）。ApprovalRequest 是 propose_cut 创建的审批核心对象，固化其 wire 形状。本机真实运行 TS contracts 35 项＋Python「35 wire fixtures against 40 offline definitions」双过（累计 18 文件 111 项 TS 测试绿）。
+- 设备/relay 连接 URI 纯逻辑测试（已运行通过，goal① 设备接入安全）：上游 `packages/protocol/src/daemon-endpoints.test.ts`（26 项，仅 type-only import、运行时自包含）在本机独立 vitest 真实跑通，验证 tcp/relay URI 解析序列化往返、IPv6、userinfo 拒绝、relay 版本归一、protected 安全模式不静默降级。新增 downstream `daemon-endpoints-extra.test.ts`（11 项）补上游未覆盖缺口：parseHostPort 端口范围/缺失/空主机、normalizeHostPort IPv6 重括号、normalizeLoopbackToLocalhost 四种 loopback 归一与非 loopback 不变、deriveLabelFromEndpoint 回退、isRelayClientWebSocketUrl 须 role=client＋serverId、extractHostPortFromWebSocketUrl 默认端口（wss→443/ws→80）与非法协议/路径拒绝。本机真实运行 protocol 2 文件 37 项全绿（累计 19 文件 122 项 TS 测试绿）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
