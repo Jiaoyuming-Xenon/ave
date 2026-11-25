@@ -312,5 +312,53 @@
     "schema": "EditorRole",
     "valid": false,
     "value": "admin"
+  },
+  {
+    "name": "stream descriptor video h264",
+    "schema": "StreamDescriptor",
+    "valid": true,
+    "value": { "streamUid": "stream:0", "streamIndex": 0, "kind": "video", "codec": "h264", "timeBase": { "num": "1", "den": "30" }, "disposition": {} }
+  },
+  {
+    "name": "stream descriptor kind must be known",
+    "schema": "StreamDescriptor",
+    "valid": false,
+    "value": { "streamUid": "stream:0", "streamIndex": 0, "kind": "bogus", "codec": "h264", "timeBase": { "num": "1", "den": "30" }, "disposition": {} }
+  },
+  {
+    "name": "read asset chunk metadata binds identity and version",
+    "schema": "ReadAssetChunkMetadata",
+    "valid": true,
+    "value": { "offset": "0", "bytesLength": "4", "totalBytes": "10", "revision": "1", "chunkSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "assetSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "protocolVersion": "1" }
+  },
+  {
+    "name": "read asset chunk metadata protocol version must be 1",
+    "schema": "ReadAssetChunkMetadata",
+    "valid": false,
+    "value": { "offset": "0", "bytesLength": "4", "totalBytes": "10", "revision": "1", "chunkSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "assetSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "protocolVersion": "2" }
+  },
+  {
+    "name": "video tool call get job status",
+    "schema": "VideoToolCall",
+    "valid": true,
+    "value": { "protocolVersion": "1", "toolCallId": "call", "tool": "get_job_status", "args": { "jobId": "job" } }
+  },
+  {
+    "name": "video tool call rejects an unknown tool",
+    "schema": "VideoToolCall",
+    "valid": false,
+    "value": { "protocolVersion": "1", "toolCallId": "call", "tool": "bash", "args": {} }
+  },
+  {
+    "name": "commit upload request binds final hash",
+    "schema": "CommitUploadRequest",
+    "valid": true,
+    "value": { "requestId": "r1", "uploadId": "u", "finalSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+  },
+  {
+    "name": "commit upload request final hash must be sha256",
+    "schema": "CommitUploadRequest",
+    "valid": false,
+    "value": { "requestId": "r1", "uploadId": "u", "finalSha256": "short" }
   }
 ]
