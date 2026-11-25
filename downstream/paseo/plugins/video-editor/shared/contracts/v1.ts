@@ -301,6 +301,7 @@ export const JobSnapshotSchema = z
     progress: z.object({ completedUnits: uint, totalUnits: uint.optional() }).strict().optional(),
     artifacts: z.array(ArtifactRefSchema),
     error: EditorErrorSchema.optional(),
+    analysisAssetId: id.optional(),
   })
   .strict();
 export type JobSnapshot = z.infer<typeof JobSnapshotSchema>;
@@ -539,6 +540,19 @@ export const commitUploadRpc = {
   input: CommitUploadRequestSchema,
   output: SourceAssetSchema,
 };
+export const AnalyzeAssetInputSchema = z
+  .object({
+    requestId,
+    projectId: id,
+    assetId: id,
+    rate: z
+      .string()
+      .regex(/^[1-9][0-9]*\/[1-9][0-9]*$/)
+      .optional(),
+  })
+  .strict();
+export type AnalyzeAssetInput = z.infer<typeof AnalyzeAssetInputSchema>;
+
 export const readAssetChunkRpc = {
   name: "video.v1.read_asset_chunk",
   input: ReadAssetChunkRequestSchema,
@@ -598,6 +612,11 @@ export const stopPlanningRunRpc = {
   name: "video.v1.stop_planning_run",
   input: PlanningRunRequestSchema,
   output: PlanningRunStatusSchema,
+};
+export const analyzeAssetRpc = {
+  name: "video.v1.analyze_asset",
+  input: AnalyzeAssetInputSchema,
+  output: CreateJobResultSchema,
 };
 export const getPlanningRunRpc = {
   name: "video.v1.get_planning_run",

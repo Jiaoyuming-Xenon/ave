@@ -673,6 +673,59 @@ export class EditorStore {
     });
   }
 
+  /** Read-only analysis job: no approval/grant, operator-or-above, deduplicated per asset+hash. */
+  createAnalysisJob(input: {
+    requestId: string;
+    projectId: string;
+    assetId: string;
+    rate?: string;
+    principal: EditorPrincipal;
+  }): JobResult {
+    this.authorize(input.projectId, input.principal, "operator");
+    return this.mutate({
+      projectId: input.projectId,
+      requestId: input.requestId,
+      payload: input,
+      execute: () => {
+        const project = this.project(input.projectId, {
+          principalId: "owner",
+          role: "owner",
+          projectIds: null,
+        });
+        const asset = project.assets.find((a) => a.assetId === input.assetId);
+        if (!asset) editorFailure("ASSET_NOT_FOUND", "The asset is not in this project");
+        const rate = input.rate ?? "25/1";
+        const planHash = sha256Json(["analysis", input.assetId, asset.original.sha256, rate]);
+        const existing = this.database
+          .prepare(
+            "SELECT document FROM jobs WHERE project_id = ? AND plan_hash = ? AND kind = 'analysis' AND active = 1",
+          )
+          .get(input.projectId, planHash) as { document: string } | undefined;
+        if (existing)
+          return { job: JobSnapshotSchema.parse(JSON.parse(existing.document)), deduplicated: true };
+        const job = JobSnapshotSchema.parse({
+          jobId: randomUUID(),
+          projectId: input.projectId,
+          revision: project.revision,
+          planHash,
+          kind: "analysis",
+          state: JOB_START_STATE.analysis,
+          phaseDetail: "queued",
+          progress: { completedUnits: "0" },
+          artifacts: [],
+          analysisAssetId: input.assetId,
+        });
+        this.database
+          .prepare(
+            "INSERT INTO jobs(job_id, project_id, plan_hash, revision, kind, document, active) VALUES (?, ?, ?, ?, ?, ?, 1)",
+          )
+          .run(job.jobId, job.projectId, planHash, job.revision, job.kind, JSON.stringify(job));
+        this.emit(input.projectId, "job.state.changed", { jobId: job.jobId, state: job.state });
+        return { job, deduplicated: false };
+      },
+    });
+  }
+
   job(projectId: string, jobId: string, principal: EditorPrincipal): JobSnapshot {
     this.authorize(projectId, principal, "viewer");
     const row = this.database
