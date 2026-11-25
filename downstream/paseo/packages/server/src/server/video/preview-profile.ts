@@ -20,9 +20,7 @@ function rationalAdd(a: Rational, b: Rational): Rational {
 export function assertRenderablePreview(draft: EditPlanDraftV1): void {
   const unsupported = [
     draft.transformOperations,
-    draft.audioOperations,
     draft.transitionOperations,
-    draft.subtitleOperations,
     draft.generationRequests,
     draft.qaRequirements,
     draft.externalDestinations,
@@ -32,20 +30,24 @@ export function assertRenderablePreview(draft: EditPlanDraftV1): void {
     unsupported.some((ops) => ops.length > 0)
   )
     editorFailure("CAPABILITY_UNAVAILABLE", "This preview profile supports FFmpeg trims only");
+  if (draft.audioOperations.length > 64)
+    editorFailure("CAPABILITY_UNAVAILABLE", "At most 64 audio operations per plan");
+  for (const op of draft.audioOperations)
+    if (op.source.assetId !== draft.trimOperations[0]?.source.assetId)
+      editorFailure(
+        "CAPABILITY_UNAVAILABLE",
+        "Audio operations must target the same asset as the trims",
+      );
+  if (draft.subtitleOperations.length > 64 || draft.subtitleOperations.some((op) => op.mode !== "burn-in"))
+    editorFailure(
+      "CAPABILITY_UNAVAILABLE",
+      "This preview profile supports burn-in subtitles only (max 64 cues)",
+    );
   const ops = draft.trimOperations;
   if (ops.length === 0)
     editorFailure("CAPABILITY_UNAVAILABLE", "At least one trim operation is required");
-  const first = ops[0]!;
   let cursor: Rational = { num: "0", den: "1" };
   for (const op of ops) {
-    if (
-      op.source.assetId !== first.source.assetId ||
-      op.source.streamUid !== first.source.streamUid
-    )
-      editorFailure(
-        "CAPABILITY_UNAVAILABLE",
-        "Multi-asset or multi-stream plans are not supported by this preview profile",
-      );
     if (!rationalEquals(op.recordRange.start, cursor))
       editorFailure(
         "CAPABILITY_UNAVAILABLE",

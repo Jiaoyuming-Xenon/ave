@@ -7,11 +7,19 @@ function milliseconds(value: string): bigint {
   return BigInt(match[1]!) * 1000n + BigInt((match[2] ?? "").padEnd(3, "0"));
 }
 
+export interface CaptionCue {
+  text: string;
+  start: string;
+  end: string;
+}
+
 export function proposeCut(
   project: ProjectSnapshot,
   assetId: string,
   start: string,
   end: string,
+  caption?: CaptionCue,
+  audioGainMilli?: string,
 ): EditPlanDraftV1 {
   const asset = project.assets.find((a) => a.assetId === assetId);
   const stream = asset?.streams.find((s) => s.kind === "video");
@@ -44,9 +52,45 @@ export function proposeCut(
       },
     ],
     transformOperations: [],
-    audioOperations: [],
+    audioOperations:
+      audioGainMilli && /^\d{1,6}$/.test(audioGainMilli.trim())
+        ? [
+            {
+              opId: "audio-1",
+              order: "1",
+              trackId: "a1",
+              clipId: "clip-1",
+              source: {
+                assetId,
+                assetContentHash: asset.original.sha256,
+                streamUid: asset.streams.find((s) => s.kind === "audio")?.streamUid ?? stream.streamUid,
+                probeRevision: "1",
+              },
+              sourceRange: { start: { num: first.toString(), den: "1000" }, duration },
+              recordRange: { start: { num: "0", den: "1" }, duration },
+              gainMilli: audioGainMilli.trim(),
+              mute: false,
+            },
+          ]
+        : [],
     transitionOperations: [],
-    subtitleOperations: [],
+    subtitleOperations: caption
+      ? [
+          {
+            opId: "sub-1",
+            order: "1",
+            trackId: "s1",
+            clipId: "clip-1",
+            cueId: "cue-1",
+            range: {
+              start: { num: milliseconds(caption.start).toString(), den: "1000" },
+              duration: { num: (milliseconds(caption.end) - milliseconds(caption.start)).toString(), den: "1000" },
+            },
+            text: caption.text.slice(0, 16_384),
+            mode: "burn-in" as const,
+          },
+        ]
+      : [],
     generationRequests: [],
     qaRequirements: [],
     externalDestinations: [],
@@ -98,5 +142,51 @@ export function proposeCutOut(
         recordRange: { start: head, duration: ms(tailDuration) },
       },
     ],
+  };
+}
+
+export interface ConcatSegment {
+  assetId: string;
+  start: string;
+  end: string;
+}
+
+/** Concatenate segments from possibly different assets into one contiguous timeline. */
+export function proposeConcat(project: ProjectSnapshot, segments: ConcatSegment[]): EditPlanDraftV1 {
+  if (!segments.length) throw new Error("至少需要一个片段。");
+  const ops = segments.map((seg, i) => {
+    const asset = project.assets.find((a) => a.assetId === seg.assetId);
+    const stream = asset?.streams.find((s) => s.kind === "video");
+    if (!asset || !stream) throw new Error(`素材 ${seg.assetId} 缺少视频流。`);
+    const from = milliseconds(seg.start);
+    const to = milliseconds(seg.end);
+    if (to <= from) throw new Error("出点必须晚于入点。");
+    return { asset, stream, from, to, index: i };
+  });
+  let cursor = 0n;
+  const trimOperations = ops.map(({ asset, stream, from, to, index }) => {
+    const duration = { num: (to - from).toString(), den: "1000" };
+    const op = {
+      opId: `trim-${index + 1}`,
+      order: (index + 1).toString(),
+      trackId: "v1",
+      clipId: `clip-${index + 1}`,
+      source: {
+        assetId: asset.assetId,
+        assetContentHash: asset.original.sha256,
+        streamUid: stream.streamUid,
+        probeRevision: "1",
+      },
+      sourceRange: { start: { num: from.toString(), den: "1000" }, duration },
+      recordRange: { start: { num: cursor.toString(), den: "1000" }, duration },
+    };
+    cursor += to - from;
+    return op;
+  });
+  const base = proposeCut(project, ops[0]!.asset.assetId, segments[0]!.start, segments[0]!.end);
+  return {
+    ...base,
+    intent: `拼接 ${ops.length} 段：` + ops.map((o, i) => `${o.asset.displayName}[${segments[i]!.start}-${segments[i]!.end}]`).join(" + "),
+    trimOperations,
   };
 }

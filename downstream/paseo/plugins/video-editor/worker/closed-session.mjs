@@ -5,6 +5,8 @@ const prompt =
   "You are a video edit planner. Inspect project metadata and propose a structured plan. Only the human can approve rendering or delivery.";
 const descriptions = {
   get_project_snapshot: "Inspect the current project revision and immutable asset identifiers.",
+  get_contact_sheet: "Inspect bounded contact sheet metadata for a project asset.",
+  get_qa_report: "Inspect a QA artifact identity for a project job.",
   get_asset_metadata: "Inspect the streams of an identified project asset.",
   get_job_status: "Inspect the daemon-recorded state of a project job.",
   validate_edit_plan: "Validate a proposed edit without saving or executing it.",

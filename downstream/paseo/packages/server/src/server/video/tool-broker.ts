@@ -67,6 +67,41 @@ export class VideoToolBroker {
         );
         return { jobId, kind, state, revision, progress };
       }
+      case "get_qa_report": {
+        const job = this.store.job(projectId, call.args.jobId, principal);
+        const qa = job.artifacts.find((a) => a.kind === "qa");
+        if (!qa) editorFailure("ASSET_NOT_FOUND", "The job has no QA artifact yet");
+        return {
+          jobId: job.jobId,
+          kind: job.kind,
+          state: job.state,
+          revision: job.revision,
+          qaArtifactId: qa.artifactId,
+          qaSha256: qa.blob.sha256,
+        };
+      }
+      case "get_contact_sheet": {
+        const asset = this.store
+          .project(projectId, principal)
+          .assets.find((a) => a.assetId === call.args.assetId);
+        if (!asset || asset.original.sha256 !== call.args.contentHash)
+          editorFailure("ASSET_NOT_FOUND", "Asset identity is not in the bound project");
+        const indexBytes = asset.presentationIndex;
+        return {
+          assetId: asset.assetId,
+          contentHash: asset.original.sha256,
+          presentationIndexSha256: indexBytes.sha256,
+          streams: asset.streams.map((s) => ({
+            streamUid: s.streamUid,
+            kind: s.kind,
+            codec: s.codec,
+            width: s.width,
+            height: s.height,
+            averageRate: s.averageRate,
+          })),
+          note: "Bounded metadata only; pixels are never sent to the model. Generate the sheet via video.v1.contact_sheet.",
+        };
+      }
       case "validate_edit_plan":
         this.store.validateProposal(call.args, principal);
         return { valid: true };

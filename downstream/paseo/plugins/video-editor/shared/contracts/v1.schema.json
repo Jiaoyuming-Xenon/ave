@@ -851,7 +851,8 @@
             "candidate",
             "export",
             "qa",
-            "manifest"
+            "manifest",
+            "contact"
           ]
         },
         "blob": {
@@ -1012,6 +1013,106 @@
         "requestId",
         "uploadId",
         "finalSha256"
+      ],
+      "additionalProperties": false
+    },
+    "ContactSheetRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:ContactSheetRequest",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "assetId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "maxTiles": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,2})$"
+        }
+      },
+      "required": [
+        "requestId",
+        "projectId",
+        "assetId"
+      ],
+      "additionalProperties": false
+    },
+    "ContactSheetResult": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:ContactSheetResult",
+      "type": "object",
+      "properties": {
+        "artifactId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "assetId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "sourceSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "columns": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "rows": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "tiles": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "tileWidth": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "tileHeight": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "tileSourceSeconds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blob": {
+          "$ref": "urn:video-editor:v1:BlobRef"
+        }
+      },
+      "required": [
+        "artifactId",
+        "projectId",
+        "assetId",
+        "sourceSha256",
+        "columns",
+        "rows",
+        "tiles",
+        "tileWidth",
+        "tileHeight",
+        "tileSourceSeconds",
+        "blob"
       ],
       "additionalProperties": false
     },
@@ -2709,6 +2810,85 @@
             },
             "args": {
               "$ref": "urn:video-editor:v1:EditPlanDraftV1"
+            }
+          },
+          "required": [
+            "protocolVersion",
+            "toolCallId",
+            "tool",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "protocolVersion": {
+              "type": "string",
+              "const": "1"
+            },
+            "toolCallId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            "tool": {
+              "type": "string",
+              "const": "get_contact_sheet"
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "assetId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                },
+                "contentHash": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "assetId",
+                "contentHash"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "protocolVersion",
+            "toolCallId",
+            "tool",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "protocolVersion": {
+              "type": "string",
+              "const": "1"
+            },
+            "toolCallId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            "tool": {
+              "type": "string",
+              "const": "get_qa_report"
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "jobId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                }
+              },
+              "required": [
+                "jobId"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [

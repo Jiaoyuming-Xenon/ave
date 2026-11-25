@@ -69,6 +69,7 @@ async function sha256(file: string): Promise<string> {
 test.each([
   { cadence: "CFR", rate: 30, firstMs: 0, durationMs: 1000, expectedFrames: 30 },
   { cadence: "CFR", rate: 25, firstMs: 120, durationMs: 1280, expectedFrames: 32 },
+  { cadence: "silent then tone", rate: 25, firstMs: 0, durationMs: 2000, expectedFrames: 50 },
   { cadence: "VFR", rate: 25, firstMs: 0, durationMs: 1000, expectedFrames: 24 },
 ])("a real daemon imports, approves, renders, and serves a validated $rate fps video ($cadence)", async ({cadence, rate, firstMs, durationMs, expectedFrames}) => {
   const duration = { num: String(durationMs), den: "1000" };
@@ -184,6 +185,23 @@ test.each([
       invoke("commit_upload", { ...commit, requestId: "another-commit" }),
     ).rejects.toThrow();
     expect(await invoke("get_project", { projectId })).toEqual(beforeReplay);
+    let silentAsset: typeof asset | undefined;
+    if (cadence === "silent then tone") {
+      const silentPath = path.join(root, "silent.mp4");
+      await execute("ffmpeg", ["-v", "error", "-i", source, "-map", "0:v:0", "-an", "-c", "copy", silentPath]);
+      const payload = await readFile(silentPath);
+      const digest = await sha256(silentPath);
+      const { uploadId } = UploadStatusSchema.parse(await invoke("create_upload", {
+        requestId: "silent-upload", projectId, displayName: "silent.mp4", mediaType: "video/mp4",
+        expectedSize: String(payload.length), expectedSha256: digest,
+      }));
+      for (let offset = 0; offset < payload.length; offset += 8192) {
+        const chunk = payload.subarray(offset, offset + 8192);
+        await invoke("write_upload_chunk", encodeFramedChunk({requestId: `silent-${offset}`, uploadId,
+          offset: String(offset), length: String(chunk.length), chunkSha256: createHash("sha256").update(chunk).digest("hex")}, chunk));
+      }
+      silentAsset = SourceAssetSchema.parse(await invoke("commit_upload", {requestId: "silent-commit", uploadId, finalSha256: digest}));
+    }
     const current = await client.invokePluginRpc("video-editor", "video.v1.get_project", {
       projectId,
     });
@@ -201,6 +219,18 @@ test.each([
       sourceRange: { start: { num: String(firstMs), den: "1000" }, duration },
       recordRange: { start: { num: "0", den: "1" }, duration },
     };
+    const operations = [operation];
+    if (silentAsset) {
+      operation.sourceRange.duration = operation.recordRange.duration = {num: "1", den: "1"};
+      const silent = structuredClone(operation);
+      silent.opId = "silent-op";
+      silent.clipId = "silent-clip";
+      silent.source.assetId = silentAsset.assetId;
+      silent.source.assetContentHash = silentAsset.original.sha256;
+      operation.order = "2";
+      operation.recordRange.start = {num: "1", den: "1"};
+      operations.unshift(silent);
+    }
     const { plan, approval } = (await client.invokePluginRpc(
       "video-editor",
       "video.v1.submit_plan",
@@ -214,7 +244,7 @@ test.each([
           baseTimelineRevision: Reflect.get(current, "revision"),
           baseAssetManifestHash: Reflect.get(current, "baseAssetManifestHash"),
           intent: `Keep ${durationMs} milliseconds starting at ${firstMs} ms`,
-          trimOperations: [operation],
+          trimOperations: operations,
           transformOperations: [],
           audioOperations: [],
           transitionOperations: [],
@@ -439,6 +469,20 @@ test.each([
     const downloaded = path.join(root, "approved final.mp4");
     await writeFile(downloaded, finalBytes);
     await expectTrimClock(downloaded);
+    if (silentAsset) {
+      const pcm = path.join(root, "delivered.s16le");
+      await execute("ffmpeg", ["-v", "error", "-i", downloaded, "-map", "0:a:0", "-ac", "1", "-ar", "48000", "-f", "s16le", pcm]);
+      const samples = await readFile(pcm);
+      const peak = (from: number, until: number) => {
+        let max = 0;
+        for (let i = from; i < until; i++) max = Math.max(max, Math.abs(samples.readInt16LE(i * 2)));
+        return max;
+      };
+      // Exclude 10 ms on each side of the AAC transition.
+      expect(peak(480, 47520)).toBeLessThan(20);
+      expect(peak(48480, 48960)).toBeGreaterThan(500);
+      expect(manifest.segments.map((s: {assetId: string}) => s.assetId)).toEqual([silentAsset.assetId, asset.assetId]);
+    }
     await execute(
       "ffmpeg",
       ["-v", "error", "-xerror", "-i", downloaded, "-map", "0", "-f", "null", "-"],

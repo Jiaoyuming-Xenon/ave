@@ -9,11 +9,11 @@ import {
   createJobRpc,
   createUploadRpc, getUploadStatusRpc, writeUploadChunkRpc, commitUploadRpc,
   startPlanningRunRpc, steerPlanningRunRpc, followUpPlanningRunRpc, stopPlanningRunRpc, getEventsRpc,
-  analyzeAssetRpc,
+  analyzeAssetRpc, contactSheetRpc,
   type ApprovalRequest, type BlobRef, type EditorEvent, type PlanningRunStatus, type ProjectSnapshot,
 } from "../shared/contracts/v1.js";
 import { ReviewPlayer } from "./review-player.js";
-import { proposeCut, proposeCutOut } from "./cut.js";
+import { proposeCut, proposeCutOut, proposeConcat } from "./cut.js";
 import { SourceImport } from "./import-source.js";
 import { mountSourcePicker, digestSource } from "./web.js";
 
@@ -45,6 +45,7 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const stopRun = useRpc(stopPlanningRunRpc);
   const readEvents = useRpc(getEventsRpc);
   const analyze = useRpc(analyzeAssetRpc);
+  const sheet = useRpc(contactSheetRpc);
   const [sourceImport, setSourceImport] = useState<SourceImport | null>(null);
   const [confirmed, setConfirmed] = useState(0);
   const [project, setProject] = useState<ProjectSnapshot | null>(null);
@@ -57,8 +58,13 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const [cutStart, setCutStart] = useState("0.5");
   const [cutEnd, setCutEnd] = useState("1.5");
   const [totalSec, setTotalSec] = useState("3");
+  const [captionText, setCaptionText] = useState("");
+  const [captionStart, setCaptionStart] = useState("0");
+  const [captionEnd, setCaptionEnd] = useState("1");
+  const [gainMilli, setGainMilli] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
   const [planPrompt, setPlanPrompt] = useState("");
   const [run, setRun] = useState<PlanningRunStatus | null>(null);
   const [runEvents, setRunEvents] = useState<EditorEvent[]>([]);
@@ -282,6 +288,16 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                   });
                   show(await read({ projectId: project.projectId }));
                 })}
+              {asset.streams.some((s) => s.kind === "video") &&
+                button("生成联系表", async () => {
+                  const result = await sheet({
+                    requestId: requestId(`sheet:${asset.assetId}`),
+                    projectId: project.projectId,
+                    assetId: asset.assetId,
+                    maxTiles: "12",
+                  });
+                  setNotice(`联系表 ${result.columns}x${result.rows}（${result.tiles} 格）已生成 · SHA-256 ${result.blob.sha256.slice(0, 12)}`);
+                })}
             </DeskControl>
           ))}
           {selected !== "" && (
@@ -292,8 +308,23 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                 {field("入点（秒，含）", start, setStart)}
                 {field("出点（秒，不含）", end, setEnd)}
               </View>
+              <View style={row}>
+                {field("字幕文本（烧录）", captionText, setCaptionText)}
+                {field("字幕起点（秒）", captionStart, setCaptionStart)}
+                {field("字幕终点（秒）", captionEnd, setCaptionEnd)}
+                {field("音量增益（毫分贝，可空）", gainMilli, setGainMilli)}
+              </View>
               {button("提交裁剪方案", async () => {
-                const draft = proposeCut(project, selected, start, end);
+                const draft = proposeCut(
+                  project,
+                  selected,
+                  start,
+                  end,
+                  captionText.trim()
+                    ? { text: captionText.trim(), start: captionStart, end: captionEnd }
+                    : undefined,
+                  gainMilli,
+                );
                 const token = requestId(JSON.stringify(draft));
                 await submit({
                   requestId: token,
@@ -319,6 +350,22 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                 });
                 show(await read({ projectId: project.projectId }));
               })}
+              {project.assets.filter((a) => a.streams.some((s) => s.kind === "video")).length > 1 &&
+                button("拼接：选中片段 + 首个素材全程", async () => {
+                  const first = project.assets.find((a) => a.streams.some((s) => s.kind === "video"))!;
+                  const draft = proposeConcat(project, [
+                    { assetId: selected, start, end },
+                    { assetId: first.assetId, start: "0", end: totalSec },
+                  ]);
+                  const token = requestId(JSON.stringify(draft));
+                  await submit({
+                    requestId: token,
+                    runId: `manual-${token}`,
+                    toolCallId: token,
+                    draft,
+                  });
+                  show(await read({ projectId: project.projectId }));
+                })}
             </>
           )}
           <Text style={heading}>Agent 规划</Text>
@@ -451,6 +498,11 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
       {busy && (
         <Text accessibilityLiveRegion="polite" style={muted}>
           正在与项目同步…
+        </Text>
+      )}
+      {!!notice && (
+        <Text accessibilityLiveRegion="polite" style={muted}>
+          {notice}
         </Text>
       )}
       {!!error && (
