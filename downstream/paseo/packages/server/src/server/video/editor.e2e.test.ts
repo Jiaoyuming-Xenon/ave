@@ -519,6 +519,16 @@ test("a paired viewer can read only its project and loses access when revoked", 
       revision: a.revision,
     });
     await expect(viewer.getVideoProjectSummary(b.projectId)).rejects.toThrow(/access denied/i);
+    // Project discovery over the device channel returns only the scoped grant.
+    expect(await viewer.invokePluginRpc("video-editor", "video.v1.list_projects", {})).toEqual({
+      projects: [{ projectId: a.projectId, title: "A", revision: a.revision }],
+    });
+    const ownerProjects = (await invoke("list_projects", {})) as {
+      projects: Array<{ projectId: string }>;
+    };
+    expect(ownerProjects.projects.map((p) => p.projectId).sort()).toEqual(
+      [a.projectId, b.projectId].sort(),
+    );
     await expect(
       viewer.invokePluginRpc("video-editor", "video.v1.create_project", {
         requestId: "denied",
