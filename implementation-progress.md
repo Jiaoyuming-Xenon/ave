@@ -115,6 +115,7 @@
 - 错误 sanitization 测试（已运行通过）：新增 `errors.test.ts` 固化安全不变量——`describeEditorError` 对 EditorError 透传 code/retryable/sanitizedDetail；对任何非 EditorError（含敏感路径的原始 Error、字符串、对象、null/undefined）一律归一为 INTERNAL＋通用消息「The video service could not complete the request」，不泄露内部细节；`editorFailure` 抛出携带 code/retryable 的 EditorError。本机 vitest 真实运行 3 项全过（累计 18 文件 86 项 TS 测试绿）。
 - plan 校验边缘测试（已运行通过）：`store.test.ts` 增「plan validation edges」用例覆盖 `validatePlan` 链——过期 baseTimelineRevision/baseAssetManifestHash→REVISION_CONFLICT；trim 指向缺失素材/错误 contentHash→PLAN_SEMANTIC_INVALID「missing or changed asset」；不存在/非视频 streamUid→「existing video stream」；负起点/零时长（源与记录同置 0 以绕过能力门时长相等检查）/零分母→validateRange「non-empty, non-negative」。核实校验顺序：版本绑定→assertRenderablePreview 能力门→素材身份→流存在→范围。本机 vitest 真实运行 store 9 项全过（累计 18 文件 87 项 TS 测试绿）。
 - grant 生命周期边缘测试（已运行通过）：`store.test.ts` 增「grant lifecycle edges」两用例——已消费 grant 换新 requestId 创建另一 job→APPROVAL_CONSUMED（同 requestId 重放走幂等缓存绕过消费检查，故须换 requestId 才命中）；批准后再 addAsset 变更项目修订、用旧 expectedRevision 创建 job→REVISION_CONFLICT「project changed after approval」。补全 createJob 的 grant 归属/消费/版本守卫覆盖。本机 vitest 真实运行 store 11 项全过（累计 18 文件 89 项 TS 测试绿）。
+- 完整回归（已运行通过）：18 文件 89 项 TS 测试一次性联合运行全绿；Python 内核 sampling-map 20＋protected-composite 8＋shot-index 10 检查、worker 契约 14 fixtures/40 definitions 同步复跑 PASS。至此 M1 可在本机运行的产品表面（授权/存储/Job 故障矩阵/上传/CAS/计划校验链/grant 生命周期/候选 QA/预览能力门/二进制帧/错误 sanitization/纯逻辑裁剪）均已补可运行测试并实测；两个未勾 goal 的剩余验收（全链路 e2e AOT、生产 agent-worker 真实模型、Android 真机/打包）确属环境阻塞，非代码缺口。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
