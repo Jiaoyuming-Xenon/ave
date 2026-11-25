@@ -56,6 +56,9 @@ describe("authorizeVideoMethod role matrix", () => {
     expect(() => authorizeVideoMethod("video.v1.create_invitation", device(viewer))).toThrow(
       "Only the project owner",
     );
+    expect(() => authorizeVideoMethod("video.v1.redeem_invitation", device(viewer))).toThrow(
+      "Only the project owner",
+    );
   });
   it("operator may edit and control jobs but not manage devices or imports", () => {
     for (const method of [
@@ -67,13 +70,14 @@ describe("authorizeVideoMethod role matrix", () => {
     ]) {
       expect(authorizeVideoMethod(method, device(operator))).toEqual(operator);
     }
-    for (const method of ["video.v1.create_invitation", "video.v1.configure_worker", "video.v1.import_asset"]) {
+    for (const method of ["video.v1.create_invitation", "video.v1.redeem_invitation", "video.v1.configure_worker", "video.v1.import_asset"]) {
       expect(() => authorizeVideoMethod(method, device(operator))).toThrow("Only the project owner");
     }
   });
   it("operator cannot revoke device credentials", () => {
+    // revoke_device is a management method, so the owner-only gate fires first.
     expect(() => authorizeVideoMethod("video.v1.revoke_device", device(operator))).toThrow(
-      "operator cannot revoke",
+      "Only the project owner",
     );
   });
 });

@@ -21,6 +21,7 @@ const READ_METHODS = new Set([
 ]);
 const MANAGE_METHODS = new Set([
   "video.v1.create_invitation",
+  "video.v1.redeem_invitation",
   "video.v1.revoke_device",
   "video.v1.configure_worker",
   "video.v1.import_asset",
