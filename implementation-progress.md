@@ -18,7 +18,7 @@
 | ② Android 真机/打包 | 需真机＋electron 打包 | 本机无真机、build OOM | 环境阻塞 |
 | ② native 源素材导入 | 需 expo-crypto 二进制 digest | API 不可核实，盲写风险高，暂不做 | 暂缓 |
 
-本机真实运行汇总：**16 文件 79 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 14 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
+本机真实运行汇总：**17 文件 83 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 14 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
 
 ### 复现验收方法（OOM 受限环境，2CPU/3.9GB）
 
@@ -111,6 +111,7 @@
 - 独立媒体基线验收（已运行通过，含一处脚本修复）：带新 ffmpeg 运行根 `scripts/` 三个独立验收——`check_sampling_map.py` PASS（8 VFR 帧→9 个 25Hz 样本、精确像素/时间戳、非法 rebind/count/clock/duration/gap 拒绝、大 tick 保留）；`check_protected_composite.py` PASS（4 帧 2592 保护像素逐字节一致、opaque/feather、无损 RGB 往返、源未变）；`check_media_timebase.py` 初跑失败——诊断为新 ffmpeg（Lavf63 master）streamhash v2 在每流 checksum 行前输出 `#` 头部行，旧脚本「恰 3 行」假设被破坏（非产品回归）。修复 `measure()` 过滤 `#` 头部行（bytes 口径，保持 source/copy/shift 比较一致），复跑 PASS：19 VFR 帧、首 PTS 2s、40/80ms 步长、双 PCM＋定时字幕、流拷贝保留 packet 时间/载荷/解码 A/V、两个负对照可区分、预览时钟 [0.120,1.400) 32 帧 1.280s。
 - 二进制帧契约测试（已运行通过）：新增 `plugins/video-editor/test/bytes.test.ts` 覆盖 encodeFramedChunk/decodeFramedChunk/decodeChunkMetadata——metadata＋payload 往返（含空 payload）、非零 byteOffset 视图正确解码（DataView 用 frame.byteOffset）、帧<2 字节/声明头长越界拒绝、非对象 metadata（数组/null/标量/字符串）拒绝、超 16-bit 长度前缀（>65535）RangeError。本机 vitest 真实运行 5 项全过（累计 15 文件 74 项 TS 测试绿）。
 - 候选 QA 纯函数测试（已运行通过）：新增 `media-qa.test.ts` 覆盖两个导出纯函数——`assertCandidateAudio`（音轨数/codec=aac/sample_rate=48000/声道数匹配，纯视频源无需音轨；错数/错编码/错采样率/错声道/缺声道/多余音轨均 QA_FAILED）与 `parsePresentationFrames`（int64 frame tick 以精确字符串 token 保留，超 2^53 不被 JS 舍入、负 tick 保留、非 tick 字段仍为数字；缺 frames 列表/非整数 tick token 拒绝）。此前仅 editor.e2e 间接使用、无单测。本机 vitest 真实运行 5 项全过（累计 16 文件 79 项 TS 测试绿）。
+- 预览能力门测试（已运行通过）：新增 `preview-profile.test.ts` 覆盖导出纯函数 `assertRenderablePreview`——接受单段 FFmpeg trim 且源/记录时长有理数相等（不同表示 1/2≡2/4 仍过）；拒绝 filmcraft 后端、0/2 段 trim、七类未验证操作（transform/audio/transition/subtitle/generation/qa/external）任一非空、记录起点非 0、retiming（源/记录时长不等）。此门把未验证操作挡在审批外并在 dispatch 前复检持久化 plan。本机 vitest 真实运行 4 项全过（累计 17 文件 83 项 TS 测试绿）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误
