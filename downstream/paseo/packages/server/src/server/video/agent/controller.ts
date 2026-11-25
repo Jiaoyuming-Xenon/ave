@@ -33,6 +33,7 @@ interface RunHandle {
   sessionId: string;
   principal: EditorPrincipal;
   child: ChildProcess;
+  closed: Promise<void>;
   channel: IpcChannel<WorkerToDaemon, DaemonToWorker>;
   broker: VideoToolBroker;
   initialPrompt?: string;
@@ -77,9 +78,10 @@ export class AgentRunController {
     const entry = path.join(fileURLToPath(new URL(".", import.meta.url)));
     const workerJs = path.join(entry, "worker-main.js");
     const useTsx = !existsSync(workerJs);
-    const child = useTsx
-      ? spawn("npx", ["--no-install", "tsx", workerJs.replace(/\.js$/, ".ts")], { stdio: ["pipe", "pipe", "pipe"] })
-      : spawn(process.execPath, [workerJs], { stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(process.execPath, useTsx
+      ? ["--import", import.meta.resolve("tsx"), workerJs.replace(/\.js$/, ".ts")]
+      : [workerJs], { stdio: ["pipe", "pipe", "ignore"] });
+    const closed = new Promise<void>(resolve => child.once("close", () => resolve()));
 
     const handle: RunHandle = {
       projectId: input.projectId,
@@ -88,6 +90,7 @@ export class AgentRunController {
       principal,
       initialPrompt: input.prompt,
       child,
+      closed,
       channel: undefined as never,
       broker: new VideoToolBroker(this.store, { projectId: input.projectId, runId, principal }),
       state: "running",
@@ -101,15 +104,13 @@ export class AgentRunController {
     handle.channel = channel;
     channel.setHandler((message) => void this.onWorkerMessage(handle, message));
 
-    child.on("exit", (code) => {
-      if (handle.state === "running") {
+    // close follows both a normal exit and an asynchronous spawn failure.
+    child.on("error", () => { /* terminal state is recorded exactly once on close */ });
+    child.stdin.on("error", () => { /* a closed worker cannot receive another request */ });
+    child.once("close", (code) => {
+      if (handle.state === "running" || handle.state === "awaiting_input") {
         handle.state = "failed";
-        this.store.recordExternalEvent(
-          handle.projectId,
-          "run.failed",
-          { runId, exitCode: code },
-          handle.principal,
-        );
+        this.store.recordExternalEvent(handle.projectId, "run.failed", { runId, exitCode: code }, handle.principal);
       }
       this.runs.delete(runId);
     });
@@ -132,6 +133,7 @@ export class AgentRunController {
   }
 
   private async onWorkerMessage(handle: RunHandle, message: WorkerToDaemon): Promise<void> {
+    if (handle.state === "interrupted" || handle.state === "failed" || handle.state === "settled") return;
     switch (message.kind) {
       case "hello":
         if (handle.initialPrompt === undefined || message.runId !== handle.runId ||
@@ -165,7 +167,7 @@ export class AgentRunController {
         this.store.recordExternalEvent(
           handle.projectId,
           message.event.type,
-          { ...((message.event.payload as object) ?? {}), workerEventId: message.event.eventId },
+          { ...((message.event.payload as object) ?? {}), runId: handle.runId, workerEventId: message.event.eventId },
           handle.principal,
         );
         break;
@@ -177,6 +179,9 @@ export class AgentRunController {
           { runId: handle.runId, detail: message.detail },
           handle.principal,
         );
+        if (message.state === "settled" || message.state === "failed" || message.state === "interrupted") {
+          await this.closeWorker(handle);
+        }
         break;
     }
   }
@@ -208,8 +213,6 @@ export class AgentRunController {
   ): Promise<PlanningRunStatus> {
     const handle = this.handle(runId, projectId);
     this.store.authorizeProject(projectId, principal, "operator");
-    handle.channel.send({ kind: "abort" });
-    handle.channel.send({ kind: "dispose" });
     handle.state = "interrupted";
     this.store.recordExternalEvent(
       projectId,
@@ -217,13 +220,7 @@ export class AgentRunController {
       { runId, reason: "stopped by operator" },
       principal,
     );
-    await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, 5_000);
-      handle.child.once("exit", () => {
-        clearTimeout(timer);
-        resolve();
-      });
-    });
+    await this.closeWorker(handle);
     return { runId, projectId, sessionId: handle.sessionId, state: "interrupted" };
   }
 
@@ -241,12 +238,22 @@ export class AgentRunController {
     };
   }
 
-  async disposeAll(): Promise<void> {
-    for (const handle of [...this.runs.values()]) {
-      handle.channel.send({ kind: "abort" });
-      handle.channel.send({ kind: "dispose" });
-      handle.child.kill("SIGTERM");
+  private async closeWorker(handle: RunHandle): Promise<void> {
+    handle.child.stdin?.end();
+    const deadline = setTimeout(() => handle.child.kill("SIGKILL"), 5000);
+    try {
+      await handle.closed;
+    } finally {
+      clearTimeout(deadline);
     }
-    this.runs.clear();
+  }
+
+  async disposeAll(): Promise<void> {
+    await Promise.all([...this.runs.values()].map(handle => {
+      if (handle.state === "running" || handle.state === "awaiting_input") {
+        return this.stopRun(handle.projectId, handle.runId, handle.principal);
+      }
+      return this.closeWorker(handle);
+    }));
   }
 }

@@ -36,7 +36,29 @@ async function main(): Promise<void> {
 
   const send = (message: WorkerToDaemon) => channel.send(WorkerToDaemonSchema.parse(message));
 
-  channel.setHandler(async (message: DaemonToWorker) => {
+  // Process exit covers init failures as well as normal stop. Only this process
+  // creates the workspace; never delete a directory supplied in an IPC request.
+  process.once("exit", () => {
+    if (workspace) rmSync(workspace, { recursive: true, force: true });
+  });
+  let stopping = false;
+  async function shutdown(code: number) {
+    if (stopping) return;
+    stopping = true;
+    const deadline = setTimeout(() => process.exit(1), 3000);
+    try {
+      await session?.abort();
+      await session?.dispose();
+    } finally {
+      clearTimeout(deadline);
+      process.exit(code);
+    }
+  }
+  process.stdin.once("end", () => void shutdown(0));
+  process.once("SIGTERM", () => void shutdown(0));
+
+  async function dispatch(message: DaemonToWorker) {
+    if (stopping) return;
     switch (message.kind) {
       case "init": {
         if (init) editorFailure("INVALID_ARGUMENT", "Duplicate init");
@@ -80,23 +102,16 @@ async function main(): Promise<void> {
         send({ kind: "run_state", state: "interrupted", detail: "aborted by operator" });
         break;
       case "dispose":
-        if (session) {
-          await session.abort().catch(() => undefined);
-          await session.dispose().catch(() => undefined);
-        }
-        if (workspace) rmSync(workspace, { recursive: true, force: true });
-        process.exit(0);
+        await shutdown(0);
         break;
       case "ping":
         break;
       case "tool_result":
         break;
     }
-  });
+  }
 
-  process.on("SIGTERM", () => {
-    void session?.dispose().finally(() => process.exit(0));
-  });
+  channel.setHandler(message => dispatch(message).catch(() => shutdown(1)));
 }
 
 void main();
