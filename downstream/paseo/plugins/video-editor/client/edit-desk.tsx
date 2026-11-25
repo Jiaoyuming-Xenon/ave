@@ -13,7 +13,7 @@ import {
   type ApprovalRequest, type BlobRef, type EditorEvent, type PlanningRunStatus, type ProjectSnapshot,
 } from "../shared/contracts/v1.js";
 import { ReviewPlayer } from "./review-player.js";
-import { proposeCut, proposeCutOut } from "./cut.js";
+import { proposeCut, proposeCutOut, proposeConcat } from "./cut.js";
 import { SourceImport } from "./import-source.js";
 import { mountSourcePicker, digestSource } from "./web.js";
 
@@ -350,6 +350,22 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                 });
                 show(await read({ projectId: project.projectId }));
               })}
+              {project.assets.filter((a) => a.streams.some((s) => s.kind === "video")).length > 1 &&
+                button("拼接：选中片段 + 首个素材全程", async () => {
+                  const first = project.assets.find((a) => a.streams.some((s) => s.kind === "video"))!;
+                  const draft = proposeConcat(project, [
+                    { assetId: selected, start, end },
+                    { assetId: first.assetId, start: "0", end: totalSec },
+                  ]);
+                  const token = requestId(JSON.stringify(draft));
+                  await submit({
+                    requestId: token,
+                    runId: `manual-${token}`,
+                    toolCallId: token,
+                    draft,
+                  });
+                  show(await read({ projectId: project.projectId }));
+                })}
             </>
           )}
           <Text style={heading}>Agent 规划</Text>

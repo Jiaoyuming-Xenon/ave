@@ -236,6 +236,21 @@ export class MediaService {
       encoding: report.probe.streams,
       qaReport: report,
       approvalId: job.approvalId,
+      segments: plan.trimOperations.map((op) => ({
+        opId: op.opId,
+        assetId: op.source.assetId,
+        assetContentHash: op.source.assetContentHash,
+        streamUid: op.source.streamUid,
+        sourceRange: op.sourceRange,
+        recordRange: op.recordRange,
+      })),
+      subtitleCues: plan.subtitleOperations.length,
+      audioOperations: plan.audioOperations.map((op) => ({
+        opId: op.opId,
+        clipId: op.clipId,
+        gainMilli: op.gainMilli,
+        mute: op.mute,
+      })),
     });
     this.throwIfCancelled(signal);
     const output = {
