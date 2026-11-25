@@ -46,8 +46,46 @@ def probe(ffprobe, path):
 
 
 def decode_errors(ffmpeg, path):
-    r = run(ffmpeg, "-v", "error", "-i", path, "-f", "null", "-")
-    return [l for l in r.stderr.splitlines() if l.strip()]
+    r = run(ffmpeg, "-nostdin", "-v", "error", "-xerror", "-i", path,
+            "-map", "0:v?", "-map", "0:a?", "-f", "null", "-")
+    errors = r.stderr.splitlines()
+    if r.returncode:
+        errors.append(f"decoder exited {r.returncode}")
+    return errors
+
+
+def media_failures(findings):
+    """Check each side against the fixture, not just against the other exporter."""
+    failures = []
+    for name in ("cfr", "vfr", "multistream", "audio_wav", "audio_m4a"):
+        audio_only = name.startswith("audio_")
+        for side in ("fc", "ff"):
+            rec = findings[name][side]
+            probe_result = rec["probe"]
+            streams = probe_result.get("streams", [])
+            audio = [s for s in streams if s["codec_type"] == "audio"]
+            video = [s for s in streams if s["codec_type"] == "video"]
+            label = f"{name}/{side}"
+            if rec["rc"] or probe_result.get("error") or rec["decode_errors"]:
+                failures.append(f"{label}: export, probe or decode failed")
+            if not audio or bool(video) == audio_only:
+                failures.append(f"{label}: missing or unexpected A/V streams")
+            if name == "cfr" and (len(video) != 1 or video[0].get("codec_name") != "h264"
+                                  or video[0].get("nb_frames") != "38"
+                                  or video[0].get("avg_frame_rate") != "25/1"):
+                failures.append(f"{label}: unexpected CFR video")
+            if name == "cfr" or audio_only:
+                rate = "44100" if name == "audio_m4a" else "48000"
+                codec = "pcm_s16le" if name == "audio_wav" else "aac"
+                expected = 1.3 if audio_only else 1.5
+                try:
+                    duration = float(audio[0]["duration"])
+                except (IndexError, KeyError, ValueError, TypeError):
+                    duration = 0
+                if (len(audio) != 1 or audio[0].get("sample_rate") != rate
+                        or audio[0].get("codec_name") != codec or not abs(duration - expected) <= 0.05):
+                    failures.append(f"{label}: unexpected audio profile or duration")
+    return failures
 
 
 def main() -> int:
@@ -185,29 +223,19 @@ def main() -> int:
             "rc_with_allow": r_allow.returncode,
         }
 
-    failures = []
-    for name in ("cfr", "vfr", "multistream"):
-        rec = findings[name]
-        for side in ("fc", "ff"):
-            if rec[side]["rc"] != 0 or rec[side]["probe"].get("error") or rec[side]["decode_errors"]:
-                failures.append(f"{name}/{side}: export or decode failed")
-    for name in ("cfr", "audio_wav", "audio_m4a"):
-        fc_v = next((s for s in findings[name]["fc"]["probe"]["streams"] if s["codec_type"] == "video"), None)
-        ff_v = next((s for s in findings[name]["ff"]["probe"]["streams"] if s["codec_type"] == "video"), None)
-        fc_a = next((s for s in findings[name]["fc"]["probe"]["streams"] if s["codec_type"] == "audio"), None)
-        ff_a = next((s for s in findings[name]["ff"]["probe"]["streams"] if s["codec_type"] == "audio"), None)
-        if name == "cfr" and (not fc_v or fc_v["nb_frames"] != ff_v["nb_frames"]
-                              or fc_v["avg_frame_rate"] != "25/1"):
-            failures.append(f"cfr: FilmCraft frames/fps {fc_v} != FFmpeg {ff_v}")
-        if fc_a and ff_a and (fc_a.get("sample_rate") != ff_a.get("sample_rate")
-                              or abs(float(fc_a["duration"]) - float(ff_a["duration"])) > 0.05):
-            failures.append(f"{name}: audio {fc_a} != FFmpeg {ff_a}")
+    failures = media_failures(findings)
     kr = findings["kill_restart"]
     if kr["killed_rc"] != -9 or kr["revision_after_kill"] is None or kr["reexport_rc"] != 0:
         failures.append(f"kill_restart: {kr}")
     off = findings["offline"]
     if off["rc_without_allow"] != 1 or not off["offline_media_reported"] or off["rc_with_allow"] != 0:
         failures.append(f"offline: {off}")
+
+    if failures:
+        print("E13 FAIL:", file=sys.stderr)
+        for f in failures:
+            print(f"- {f}", file=sys.stderr)
+        return 1
 
     vfr_fc = next(s for s in findings["vfr"]["fc"]["probe"]["streams"] if s["codec_type"] == "video")
     vfr_ff = next(s for s in findings["vfr"]["ff"]["probe"]["streams"] if s["codec_type"] == "video")
@@ -220,11 +248,6 @@ def main() -> int:
         "multistream_fc_streams": ms_fc_streams,
         "kill_restart": kr, "offline": off,
     }, indent=2, ensure_ascii=False))
-    if failures:
-        print("E13 FAIL:", file=sys.stderr)
-        for f in failures:
-            print(f"- {f}", file=sys.stderr)
-        return 1
     print("E13 PASS: whitelist trim/export + audio conform; VFR normalized to sequence CFR and "
           "subtitle/multi-audio not passthrough (kept out of the FilmCraft whitelist per ADR 005/006/011)")
     return 0
