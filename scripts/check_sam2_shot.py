@@ -58,7 +58,43 @@ def media(*args, data=None):
                           input=data, capture_output=True, check=True, timeout=60).stdout
 
 
-def run(source, weights, output, profile):
+def check_bedroom(predictor, source, output):
+    # The upstream notebook annotates the shorts, then refines the same object
+    # with a second positive click on the shirt. No ground-truth mask is supplied.
+    frames = output / "bedroom32"
+    frames.mkdir()
+    for i in range(32):
+        name = f"{i:05d}.jpg"
+        (frames / name).symlink_to(source / "notebooks/videos/bedroom" / name)
+    first = FramePrompt(0, (Point(210, 350, True),))
+    updated = FramePrompt(0, first.points + (Point(250, 220, True),))
+    before = dict(track_shot(predictor, frames, 32, [first]))
+    after = dict(track_shot(predictor, frames, 32, [first, updated]))
+    replay = dict(track_shot(predictor, frames, 32, [first, updated]))
+    assert all(np.array_equal(after[i], replay[i]) for i in range(32))
+    assert before[0][220, 250] == 0 and after[0][220, 250] == 255
+    panels = []
+    for i in (0, 15, 31):
+        with Image.open(frames / f"{i:05d}.jpg") as frame:
+            pixels = np.array(frame.convert("RGB"))
+        for mask in (before[i], after[i]):
+            overlay = pixels.copy()
+            target = mask != 0
+            overlay[target] = overlay[target] // 2 + np.array([95, 12, 49], np.uint8)
+            panel = Image.fromarray(overlay)
+            panel.thumbnail((440, 260))
+            panels.append(panel)
+    width, height = panels[0].size
+    sheet = Image.new("RGB", (2 * width, 3 * height))
+    for index, panel in enumerate(panels):
+        sheet.paste(panel, (index % 2 * width, index // 2 * height))
+    sheet.save(output / "bedroom-correction.jpg", quality=94)
+    return {"frames": 32, "rawMaskPixelsBeforeAfter": [
+        [int(np.count_nonzero(before[i])), int(np.count_nonzero(after[i]))] for i in (0, 15, 31)
+    ]}
+
+
+def run(source, weights, output, profile, bedroom):
     config, weights_sha = PROFILES[profile]
     revision = subprocess.check_output(["git", "-C", source, "rev-parse", "HEAD"], text=True).strip()
     dirty = subprocess.check_output(["git", "-C", source, "status", "--porcelain"], text=True)
@@ -134,6 +170,8 @@ def run(source, weights, output, profile):
               "gpu": torch.cuda.get_device_name(), "torch": torch.__version__,
               "cuda": torch.version.cuda, "elapsedSeconds": elapsed,
               "peakAllocatedBytes": torch.cuda.max_memory_allocated(), "shots": shots}
+    if bedroom:
+        report["bedroom"] = check_bedroom(predictor, source, output)
     (output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({**report, "shots": len(shots),
                       "minIoU": min(f["iou"] for shot in shots for f in shot["frames"])}))
@@ -145,5 +183,6 @@ if __name__ == "__main__":
     cli.add_argument("--profile", choices=PROFILES, default="tiny")
     cli.add_argument("--weights", type=Path, required=True, help="pinned checkpoint for the profile")
     cli.add_argument("--output", type=Path, required=True, help="new directory for evidence")
+    cli.add_argument("--bedroom", action="store_true", help="also replay the upstream real-video correction")
     args = cli.parse_args()
-    run(args.source.resolve(), args.weights.resolve(), args.output.resolve(), args.profile)
+    run(args.source.resolve(), args.weights.resolve(), args.output.resolve(), args.profile, args.bedroom)
