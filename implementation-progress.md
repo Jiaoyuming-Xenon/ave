@@ -58,6 +58,7 @@
 - 预 abort 取消故障测试（代码已写，未运行）：`media-failure.test.ts` 增「render job 信号已 abort 时在 spawn ffmpeg 前抛 CANCELLED」。路径核实：executeJob→render（无前置探测）→spawnChecked→throwIfCancelled(aborted)→CANCELLED，不依赖真实媒体或新版 ffmpeg。补齐 goal① 故障矩阵的取消分支。未运行 Vitest。
 - access 边界测试（代码已写，未运行）：`access.test.ts` 增边界用例——空 projectIds 邀请 INVALID_ARGUMENT；错误 token 与过期邀请（ttlSeconds:-1）redeem 均 UNAUTHENTICATED；错误凭据/未知 deviceId authenticate 抛 “invalid or revoked”；撤销不存在设备 PROJECT_NOT_FOUND。补齐 goal① 设备凭据生命周期的负路径。未运行 Vitest。
 - 阶段性验证（已运行）：`python3 -I scripts/check_project.py` 通过（18 份 Markdown、2 份 SVG、团队数据与链接一致）；`v1.schema.json` 与 main 字节一致（`listProjectsRpc` 用内联 output，未新增导出 `*Schema`，无需重生成、契约一致性保持）；工作树干净。PR 累计 16 个 downstream 文件、约 711 行新增。功能/测试代码仍未在本机运行（npm ci OOM，按指示跳过 CI），上述为静态/项目级校验。
+- native 源素材平台说明（代码已写，未运行）：`edit-desk.tsx` 源素材区原先仅 web 渲染导入控件，native 无任何导入入口或说明。现 native 增诚实提示：导入在桌面网页端（浏览器文件选择），手机端可浏览素材、设置入出点、提交裁剪方案与审批交付（核实：入出点/提交方案块非平台门控，交付审批已于块3解耦）。属 goal② 共享 Android UI 的可用性补全。未运行真机。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误

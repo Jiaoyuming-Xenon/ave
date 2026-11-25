@@ -266,6 +266,9 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
               })}
             </> : <Text style={muted}>单个视频不超过 64 MiB。</Text>}
           </View>}
+          {layout.platform !== "web" && (
+            <Text style={muted}>源素材导入请在桌面网页端进行（浏览器文件选择）；手机端可浏览素材、设置入出点、提交裁剪方案与审批交付。</Text>
+          )}
           {project.assets.length === 0 && (
             <Text style={muted}>项目中还没有素材。导入视频后可设置入点和出点。</Text>
           )}
