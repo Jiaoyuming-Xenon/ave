@@ -924,6 +924,40 @@ export class EditorStore {
     this.grant(projectId, principal.principalId, principal.role);
   }
 
+  authorizeProject(projectId: string, principal: EditorPrincipal, required: EditorRole): void {
+    this.authorize(projectId, principal, required);
+  }
+
+  /** Persist a daemon-side lifecycle/agent event; seq is assigned by the store. */
+  recordExternalEvent(
+    projectId: string,
+    type: string,
+    payload: unknown,
+    principal: EditorPrincipal,
+  ): void {
+    this.authorize(projectId, principal, "viewer");
+    this.emit(projectId, type, payload);
+  }
+
+  /** Latest lifecycle state per planning run, derived from the persisted event log. */
+  runLifecycle(
+    projectId: string,
+    principal: EditorPrincipal,
+  ): Array<{ runId: string; state: string }> {
+    this.authorize(projectId, principal, "viewer");
+    const documents = this.rows(
+      "SELECT document FROM events WHERE project_id = ? AND type LIKE 'run.%' ORDER BY CAST(seq AS INTEGER)",
+      projectId,
+    );
+    const states = new Map<string, string>();
+    for (const document of documents) {
+      const event = EditorEventSchema.parse(JSON.parse(document));
+      const runId = (event.payload as { runId?: string } | undefined)?.runId;
+      if (runId) states.set(runId, event.type.slice("run.".length));
+    }
+    return [...states.entries()].map(([runId, state]) => ({ runId, state }));
+  }
+
   private mutate<Input, Output>(input: {
     projectId: string;
     requestId: string;

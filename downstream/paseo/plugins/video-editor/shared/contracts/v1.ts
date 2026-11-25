@@ -544,3 +544,63 @@ export const readAssetChunkRpc = {
   input: ReadAssetChunkRequestSchema,
   output: z.instanceof(Uint8Array),
 };
+
+export const PlanningRunRequestSchema = z
+  .object({ projectId: id, runId: id })
+  .strict();
+export type PlanningRunRequest = z.infer<typeof PlanningRunRequestSchema>;
+
+export const StartPlanningRunInputSchema = z
+  .object({
+    requestId,
+    projectId: id,
+    prompt: z.string().min(1).max(64_000),
+    model: z
+      .object({ provider: z.string().min(1), id: z.string().min(1) })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type StartPlanningRunInput = z.infer<typeof StartPlanningRunInputSchema>;
+
+export const SteerPlanningRunInputSchema = z
+  .object({ requestId, projectId: id, runId: id, text: z.string().min(1).max(64_000) })
+  .strict();
+export type SteerPlanningRunInput = z.infer<typeof SteerPlanningRunInputSchema>;
+
+export const PlanningRunStatusSchema = z
+  .object({
+    runId: id,
+    projectId: id,
+    sessionId: id.optional(),
+    state: z.enum(["running", "awaiting_input", "settled", "interrupted", "failed"]),
+    workerPid: z.number().int().optional(),
+  })
+  .strict();
+export type PlanningRunStatus = z.infer<typeof PlanningRunStatusSchema>;
+
+export const startPlanningRunRpc = {
+  name: "video.v1.start_planning_run",
+  input: StartPlanningRunInputSchema,
+  output: PlanningRunStatusSchema,
+};
+export const steerPlanningRunRpc = {
+  name: "video.v1.steer_planning_run",
+  input: SteerPlanningRunInputSchema,
+  output: PlanningRunStatusSchema,
+};
+export const followUpPlanningRunRpc = {
+  name: "video.v1.follow_up_planning_run",
+  input: SteerPlanningRunInputSchema,
+  output: PlanningRunStatusSchema,
+};
+export const stopPlanningRunRpc = {
+  name: "video.v1.stop_planning_run",
+  input: PlanningRunRequestSchema,
+  output: PlanningRunStatusSchema,
+};
+export const getPlanningRunRpc = {
+  name: "video.v1.get_planning_run",
+  input: PlanningRunRequestSchema,
+  output: PlanningRunStatusSchema,
+};

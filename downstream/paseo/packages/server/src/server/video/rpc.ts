@@ -8,6 +8,9 @@ import {
   ProjectRequestSchema,
   PlanReviewRequestSchema,
   ReadAssetChunkRequestSchema,
+  PlanningRunRequestSchema,
+  StartPlanningRunInputSchema,
+  SteerPlanningRunInputSchema,
   type EditorPrincipal,
 } from "#video-editor/contracts/v1";
 import { decodeFramedChunk } from "#video-editor/bytes";
@@ -92,6 +95,26 @@ export class EditorRpcService {
       case "video.v1.get_events": {
         const request = z.object({ projectId: z.string(), afterSeq: z.string() }).parse(input);
         return this.editor.store.events(request.projectId, request.afterSeq, principal);
+      }
+      case "video.v1.start_planning_run": {
+        const request = StartPlanningRunInputSchema.parse(input);
+        return this.editor.agents.startRun(request, principal);
+      }
+      case "video.v1.steer_planning_run": {
+        const request = SteerPlanningRunInputSchema.parse(input);
+        return this.editor.agents.steer(request, principal);
+      }
+      case "video.v1.follow_up_planning_run": {
+        const request = SteerPlanningRunInputSchema.parse(input);
+        return this.editor.agents.followUp(request, principal);
+      }
+      case "video.v1.stop_planning_run": {
+        const request = PlanningRunRequestSchema.parse(input);
+        return this.editor.agents.stopRun(request.projectId, request.runId, principal);
+      }
+      case "video.v1.get_planning_run": {
+        const request = PlanningRunRequestSchema.parse(input);
+        return this.editor.agents.status(request.projectId, request.runId, principal);
       }
       case "video.v1.create_invitation":
       case "video.v1.redeem_invitation":

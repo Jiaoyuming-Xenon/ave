@@ -1992,6 +1992,66 @@
       ],
       "additionalProperties": false
     },
+    "PlanningRunRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:PlanningRunRequest",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        }
+      },
+      "required": [
+        "projectId",
+        "runId"
+      ],
+      "additionalProperties": false
+    },
+    "PlanningRunStatus": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:PlanningRunStatus",
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "sessionId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "running",
+            "awaiting_input",
+            "settled",
+            "interrupted",
+            "failed"
+          ]
+        },
+        "workerPid": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "runId",
+        "projectId",
+        "state"
+      ],
+      "additionalProperties": false
+    },
     "ProjectRequest": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$id": "urn:video-editor:v1:ProjectRequest",
@@ -2219,6 +2279,81 @@
         "presentationIndex",
         "probe",
         "sourceNeverWritable"
+      ],
+      "additionalProperties": false
+    },
+    "StartPlanningRunInput": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:StartPlanningRunInput",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64000
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string",
+              "minLength": 1
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "provider",
+            "id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "requestId",
+        "projectId",
+        "prompt"
+      ],
+      "additionalProperties": false
+    },
+    "SteerPlanningRunInput": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "urn:video-editor:v1:SteerPlanningRunInput",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64000
+        }
+      },
+      "required": [
+        "requestId",
+        "projectId",
+        "runId",
+        "text"
       ],
       "additionalProperties": false
     },
