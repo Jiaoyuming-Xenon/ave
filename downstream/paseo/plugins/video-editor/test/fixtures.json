@@ -144,5 +144,29 @@
     "schema": "JobControlRequest",
     "valid": false,
     "value": { "projectId": "p", "jobId": "j", "requestId": "r", "action": "delete" }
+  },
+  {
+    "name": "job creation binds approval grant and revision",
+    "schema": "CreateJobRequest",
+    "valid": true,
+    "value": { "requestId": "r", "projectId": "p", "approvalId": "a", "grantId": "g", "expectedRevision": "1" }
+  },
+  {
+    "name": "job revision is not a JSON number",
+    "schema": "CreateJobRequest",
+    "valid": false,
+    "value": { "requestId": "r", "projectId": "p", "approvalId": "a", "grantId": "g", "expectedRevision": 1 }
+  },
+  {
+    "name": "upload status reports resumable offset",
+    "schema": "UploadStatus",
+    "valid": true,
+    "value": { "uploadId": "u", "chunkSize": "262144", "nextOffset": "0" }
+  },
+  {
+    "name": "upload offset cannot be negative",
+    "schema": "UploadStatus",
+    "valid": false,
+    "value": { "uploadId": "u", "chunkSize": "262144", "nextOffset": "-1" }
   }
 ]
