@@ -191,6 +191,11 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
       screen: { flex: 1, backgroundColor: colors.surface0 },
       content: { padding: layout.compact ? 16 : 24, gap: 16 },
       clip: { gap: 4, padding: 10, borderLeftWidth: 3, borderLeftColor: colors.accent },
+      timelineRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 2, marginTop: 2 },
+      trackLabel: { width: 24 },
+      seg: { height: 16, borderRadius: 3, backgroundColor: colors.accent, justifyContent: "center" as const, paddingHorizontal: 4 },
+      segV2: { height: 16, borderRadius: 3, backgroundColor: colors.foregroundMuted, justifyContent: "center" as const, paddingHorizontal: 4 },
+      segText: { color: colors.accentForeground, fontSize: 10 },
       source: { padding: 10, borderLeftWidth: 3, borderLeftColor: colors.foregroundMuted },
       error: { color: colors.statusDanger },
     }),
@@ -614,6 +619,25 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
               <Text style={muted}>
                 {plan.trimOperations.length} 段 · {plan.transitionOperations.length} 转场 · {plan.transformOperations.length} 变换 · {plan.audioOperations.length} 音频 · {plan.subtitleOperations.length} 字幕
               </Text>
+              {["v1", "v2"].filter((t) => plan.trimOperations.some((o) => o.trackId === t)).map((t) => {
+                const trackOps = plan.trimOperations
+                  .filter((o) => o.trackId === t)
+                  .sort((a, b) => Number(a.recordRange.start.num) / Number(a.recordRange.start.den) - Number(b.recordRange.start.num) / Number(b.recordRange.start.den));
+                return (
+                  <View key={t} style={styles.timelineRow}>
+                    <Text style={[styles.muted, styles.trackLabel]}>{t}</Text>
+                    {trackOps.map((o) => {
+                      const durMs = (Number(o.recordRange.duration.num) / Number(o.recordRange.duration.den)) * 1000;
+                      const srcMs = (Number(o.sourceRange.start.num) / Number(o.sourceRange.start.den)) * 1000;
+                      return (
+                        <View key={o.opId} style={[t === "v1" ? styles.seg : styles.segV2, { flexGrow: Math.max(durMs, 1) }]}>
+                          <Text style={styles.segText} numberOfLines={1}>{o.clipId} {srcMs / 1000}s</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })}
               {plan.transitionOperations.map((tr) => (
                 <Text key={tr.opId} style={muted}>
                   转场 {tr.kind} {tr.leftClipId}→{tr.rightClipId} {tr.duration.num}/{tr.duration.den}s
