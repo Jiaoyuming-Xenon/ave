@@ -8,10 +8,12 @@ import {
   decideApprovalRpc,
   createJobRpc,
   createUploadRpc, getUploadStatusRpc, writeUploadChunkRpc, commitUploadRpc,
-  type ApprovalRequest, type BlobRef, type ProjectSnapshot,
+  startPlanningRunRpc, steerPlanningRunRpc, followUpPlanningRunRpc, stopPlanningRunRpc, getEventsRpc,
+  analyzeAssetRpc,
+  type ApprovalRequest, type BlobRef, type EditorEvent, type PlanningRunStatus, type ProjectSnapshot,
 } from "../shared/contracts/v1.js";
 import { ReviewPlayer } from "./review-player.js";
-import { proposeCut } from "./cut.js";
+import { proposeCut, proposeCutOut } from "./cut.js";
 import { SourceImport } from "./import-source.js";
 import { mountSourcePicker, digestSource } from "./web.js";
 
@@ -37,6 +39,12 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const status = useRpc(getUploadStatusRpc);
   const write = useRpc(writeUploadChunkRpc);
   const commit = useRpc(commitUploadRpc);
+  const startRun = useRpc(startPlanningRunRpc);
+  const steerRun = useRpc(steerPlanningRunRpc);
+  const followUpRun = useRpc(followUpPlanningRunRpc);
+  const stopRun = useRpc(stopPlanningRunRpc);
+  const readEvents = useRpc(getEventsRpc);
+  const analyze = useRpc(analyzeAssetRpc);
   const [sourceImport, setSourceImport] = useState<SourceImport | null>(null);
   const [confirmed, setConfirmed] = useState(0);
   const [project, setProject] = useState<ProjectSnapshot | null>(null);
@@ -46,8 +54,15 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
   const [openMedia, setOpenMedia] = useState("");
   const [start, setStart] = useState("0");
   const [end, setEnd] = useState("1");
+  const [cutStart, setCutStart] = useState("0.5");
+  const [cutEnd, setCutEnd] = useState("1.5");
+  const [totalSec, setTotalSec] = useState("3");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [planPrompt, setPlanPrompt] = useState("");
+  const [run, setRun] = useState<PlanningRunStatus | null>(null);
+  const [runEvents, setRunEvents] = useState<EditorEvent[]>([]);
+  const afterSeq = useRef("0");
   const locked = useRef(false);
   const pickerParent = useRef<View>(null);
   const projectId = project?.projectId;
@@ -258,6 +273,15 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
               <Text style={muted}>
                 {asset.streams.map((s) => s.codec).join(" / ")} · {asset.original.bytes} 字节
               </Text>
+              {asset.streams.some((s) => s.kind === "video") &&
+                button("分析采样", async () => {
+                  await analyze({
+                    requestId: requestId(`analyze:${asset.assetId}`),
+                    projectId: project.projectId,
+                    assetId: asset.assetId,
+                  });
+                  show(await read({ projectId: project.projectId }));
+                })}
             </DeskControl>
           ))}
           {selected !== "" && (
@@ -279,8 +303,78 @@ export function EditDesk({ theme, layout }: PluginSurfaceProps) {
                 });
                 show(await read({ projectId: project.projectId }));
               })}
+              <View style={row}>
+                {field("删除起点（秒）", cutStart, setCutStart)}
+                {field("删除终点（秒）", cutEnd, setCutEnd)}
+                {field("素材总长（秒）", totalSec, setTotalSec)}
+              </View>
+              {button("删除中段并拼接", async () => {
+                const draft = proposeCutOut(project, selected, cutStart, cutEnd, totalSec);
+                const token = requestId(JSON.stringify(draft));
+                await submit({
+                  requestId: token,
+                  runId: `manual-${token}`,
+                  toolCallId: token,
+                  draft,
+                });
+                show(await read({ projectId: project.projectId }));
+              })}
             </>
           )}
+          <Text style={heading}>Agent 规划</Text>
+          <View style={row}>
+            {field("规划意图（自然语言）", planPrompt, setPlanPrompt)}
+          </View>
+          <View style={row}>
+            {button("开始规划", async () => {
+              if (!project) return;
+              const started = await startRun({
+                requestId: requestId(`plan:${planPrompt}`),
+                projectId: project.projectId,
+                prompt: planPrompt.trim(),
+              });
+              setRun(started);
+              setRunEvents([]);
+              afterSeq.current = "0";
+            }, !planPrompt.trim() || !!run && run.state === "running")}
+            {button("继续/补充", async () => {
+              if (!project || !run || !planPrompt.trim()) return;
+              await followUpRun({
+                requestId: requestId(`follow:${planPrompt}`),
+                projectId: project.projectId,
+                runId: run.runId,
+                text: planPrompt.trim(),
+              });
+            }, !run || run.state !== "running" || !planPrompt.trim())}
+            {button("停止规划", async () => {
+              if (!project || !run) return;
+              setRun(await stopRun({ projectId: project.projectId, runId: run.runId }));
+            }, !run || run.state !== "running")}
+          </View>
+          {run && (
+            <Text style={muted}>
+              run {run.runId} · {run.state}{run.workerPid ? ` · worker pid ${run.workerPid}` : ""}
+            </Text>
+          )}
+          {runEvents.length > 0 && (
+            <View style={styles.clip}>
+              {runEvents.slice(-12).map((event) => (
+                <Text key={event.eventId} style={muted}>
+                  {event.seq} · {event.type}
+                </Text>
+              ))}
+            </View>
+          )}
+          {project && button("刷新事件", async () => {
+            const result = await readEvents({ projectId: project.projectId, afterSeq: afterSeq.current });
+            const fresh = result.events.filter((e) => e.runId === run?.runId || e.type.startsWith("run."));
+            if (result.events.length) afterSeq.current = result.events[result.events.length - 1].seq;
+            setRunEvents((prev) => [...prev, ...fresh]);
+            if (run) {
+              const latest = [...result.events].reverse().find((e) => e.runId === run.runId && e.type.startsWith("run."));
+              if (latest) setRun((prev) => prev && { ...prev, state: latest.type.slice(4) as PlanningRunStatus["state"] });
+            }
+          })}
           <Text style={heading}>已提议的时间线</Text>
           {!project.plans.length && <Text style={muted}>尚无裁剪方案。提交方案不会开始渲染。</Text>}
           {project.plans.map((plan) => (

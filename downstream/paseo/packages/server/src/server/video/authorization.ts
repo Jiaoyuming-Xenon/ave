@@ -14,6 +14,7 @@ const READ_METHODS = new Set([
   "video.v1.get_job",
   "video.v1.get_events",
   "video.v1.get_upload_status",
+  "video.v1.get_planning_run",
 ]);
 const MANAGE_METHODS = new Set([
   "video.v1.create_invitation",

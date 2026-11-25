@@ -1,0 +1,103 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import {
+  DaemonToWorkerSchema,
+  IpcChannel,
+  WorkerToDaemonSchema,
+  type DaemonToWorker,
+  type WorkerToDaemon,
+  type DaemonInitSchema,
+} from "./ipc.js";
+import { z } from "zod";
+import { createPlannerSession } from "./session.js";
+import { editorFailure } from "../errors.js";
+
+/**
+ * Independent agent-worker process entry. Owns exactly one Pi AgentSession
+ * for one planning run and talks to the daemon only over this stdio JSONL
+ * channel. It holds no project DB, no CAS, no grants and no media paths; all
+ * persistence and authorization happen daemon-side.
+ */
+
+type Init = z.infer<typeof DaemonInitSchema>;
+
+async function main(): Promise<void> {
+  const channel = new IpcChannel<DaemonToWorker, WorkerToDaemon>(
+    process.stdin,
+    process.stdout,
+    DaemonToWorkerSchema,
+    () => {},
+  );
+
+  let init: Init | undefined;
+  let session: Awaited<ReturnType<typeof createPlannerSession>> | undefined;
+  let workspace: string | undefined;
+
+  const send = (message: WorkerToDaemon) => channel.send(WorkerToDaemonSchema.parse(message));
+
+  channel.setHandler(async (message: DaemonToWorker) => {
+    switch (message.kind) {
+      case "init": {
+        if (init) editorFailure("INVALID_ARGUMENT", "Duplicate init");
+        init = message;
+        workspace = mkdtempSync(path.join(tmpdir(), `ave-planner-${message.runId}-`));
+        session = await createPlannerSession({
+          projectId: message.projectId,
+          runId: message.runId,
+          sessionId: message.sessionId,
+          workspace,
+          model: message.model,
+          promptSignature: message.promptSignature,
+          channel: channel as never,
+          onEvent: (event) => send({ kind: "event", event }),
+        });
+        send({
+          kind: "hello",
+          protocolVersion: "1",
+          runId: message.runId,
+          sessionId: message.sessionId,
+          workerPid: process.pid,
+        });
+        send({ kind: "run_state", state: "running" });
+        break;
+      }
+      case "prompt":
+        if (!session || !init) editorFailure("INVALID_ARGUMENT", "Worker not initialized");
+        send({ kind: "run_state", state: "running" });
+        await session.prompt(message.text);
+        send({ kind: "run_state", state: "settled" });
+        break;
+      case "steer":
+        if (!session) editorFailure("INVALID_ARGUMENT", "Worker not initialized");
+        await session.steer(message.text);
+        break;
+      case "follow_up":
+        if (!session) editorFailure("INVALID_ARGUMENT", "Worker not initialized");
+        await session.followUp(message.text);
+        break;
+      case "abort":
+        if (session) await session.abort();
+        send({ kind: "run_state", state: "interrupted", detail: "aborted by operator" });
+        break;
+      case "dispose":
+        if (session) {
+          await session.abort().catch(() => undefined);
+          await session.dispose().catch(() => undefined);
+        }
+        if (workspace) rmSync(workspace, { recursive: true, force: true });
+        process.exit(0);
+        break;
+      case "ping":
+        break;
+      case "tool_result":
+        break;
+    }
+  });
+
+  process.on("SIGTERM", () => {
+    void session?.dispose().finally(() => process.exit(0));
+  });
+}
+
+void main();
