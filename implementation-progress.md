@@ -60,3 +60,8 @@
 | SAM2/VACE/PySceneDetect 的 blob:none 检出多次遇到 HTTP/2 EOF | 保留原检出；使用固定 commit 源码归档逐 blob 核对 Git 对象后，在 `references/sam2-verified`（`2b90b9f5`，569 项）和 `references/pyscenedetect-verified`（`a696070d`，220 项）恢复独立工作树。两者状态干净，已禁止联网验证 `git archive HEAD`；结论仅限固定提交，不涵盖全部历史对象或运行时。已读 ContentDetector 的相邻帧加权打分与 AdaptiveDetector 的延迟返回逻辑；切点应使用返回的目标时码，不能使用回调当前帧。 |
 | FilmCraft 固定提交的源码与构建 | 原只读克隆 `ba6fe105` 的 1263 个唯一 blob 在离线审计时缺 947 个。已从同一提交的公开归档恢复 `references/filmcraft-verified/`，逐路径核对 Git blob ID 与可执行位，独立读回复验 1265 个文件，无缺失或额外文件。归档 SHA-256 `7d46e64cd6df247deb4c592403852ef2367ed5a4192aba0de8a0b1789e8a7883`。这是完整源码快照，不含 Git 历史；原克隆未改动。Cargo.lock 的整个工作区含 826 个包，745 个 registry 条目有校验和，另外有 4 个 Git 来源/修订组合；不是 CLI 实际链接组件清单。隔离执行 `cargo build --locked -p filmcraft-cli --no-default-features` 在启动前被权限模式拦截，无 CLI 二进制或媒体符合性验收。 |
 | Android SDK、Xvfb、系统签名工具未预装 | 后续在隔离目录安装并实测；Linux/浏览器结果不替代 Android/Windows/macOS 验收 |
+
+## 2026-11-25 · 集成回归（62bffe6）
+
+- 隔离工作树中的 `src/server/video` 实跑 10 套、33/33 通过（含 3 个 Chrome 场景）。上次失败的 30 fps 逐帧时间戳、撤销 viewer 后断连、无目标 analysis 错误三项均通过；25 fps CFR/VFR、工作台审片和下载仍通过。根仓库 downstream 文件与测试副本逐字节一致。
+- 范围不含真实模型、Android 真机或后续 96b741b 的跨素材音频/字幕功能。
