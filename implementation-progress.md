@@ -20,6 +20,19 @@
 
 本机真实运行汇总：**14 文件 69 项 TS 测试全绿**（独立 vitest 2.1.9＋node:sqlite＋zod 4.4.3，绕开 OOM 的 npm ci）；**3 个 Python 内核 38 检查**＋**worker 契约 14 fixtures/40 definitions** PASS；新 ffmpeg 真实渲染 preview 成功。outbox 只写不读死表的保留/清理策略待 owner 拍板（仅记录，未改行为）。
 
+### 复现验收方法（OOM 受限环境，2CPU/3.9GB）
+
+`npm ci` 因 better-sqlite3 原生编译反复 OOM；视频内核实际用 Node≥22.19 内置 `node:sqlite`（`sqlite.ts` 包装），故可绕开完整安装独立跑测试：
+
+1. 独立测试环境 `/tmp/vt`：装 `vitest@2.1.9`、`zod@4.4.3`（须匹配仓库 `^4.4.3`，zod@latest 结构不全）、`pino`、`ws`；把 `{zod,pino,ws}` 符号链接进 `vendor/paseo/node_modules`（残留空目录先 `rm -rf` 再 `ln -s`）。
+2. 最小配置 `/tmp/vt/vitest.config.min.ts`：alias `#video-editor/contracts/v1`→`plugins/video-editor/shared/contracts/v1.ts`、`#video-editor/bytes`→`shared/bytes.ts`；`node:sqlite`→`/tmp/vt/sqlite-shim.mjs`（`createRequire(import.meta.url) require("node:sqlite").DatabaseSync`，因 vite 不识别实验性内置而尝试打包）。
+3. 跑 TS：`cd vendor/paseo && export NODE_OPTIONS="--max-old-space-size=1536" && export PATH="<ave>/.tools/bin:$PATH" && node /tmp/vt/node_modules/vitest/vitest.mjs run --config /tmp/vt/vitest.config.min.ts --root . <测试文件...>`（媒体相关测试须带新 ffmpeg PATH）。
+4. 契约 schema 漂移：`node --experimental-strip-types scripts/generate-video-schema.mjs`（v1.ts 仅依赖 zod，自包含）→「40 definitions · in sync」。
+5. Python 内核：`python3 plugins/video-editor/test/test_{sampling_map,protected_composite,shot_index}.py`；契约 `python3 plugins/video-editor/test/check_worker_contract.py`；独立媒体基线 `python3 -I scripts/check_{media_timebase,sampling_map,protected_composite}.py`（带新 ffmpeg PATH）。
+6. 新 ffmpeg 在 `ave/.tools/bin`（BtbN master）；系统 `/usr/bin/ffmpeg` 4.4 太旧（不支持 `-fps_mode`/`-enc_time_base`）。
+
+仍阻塞：`editor.e2e`/`edit-desk.browser.e2e` 需 protocol 生成的 AOT 校验产物（`generate-validation-aot.mjs` 依赖 zod-aot＋完整 protocol 消息树，深依赖且 exports 指向未构建 dist，完整 codegen/build OOM）；生产 agent-worker 真实模型、Android 真机、electron 打包同样需完整 build/真机/真实模型。`check_scene_cuts.py` 需 pinned `references/pyscenedetect-verified`（不存在，references 只读），shot_index 内核已由 `test_shot_index.py` 覆盖。
+
 ## 2026-11-25 · M1 启动
 
 - [x] 等 FilmCraft 调研 Phase 14 完成：根提交 `21c2892` 与统计提交 `8a6954c`，18 份 Markdown、2 份 SVG 和三个锁定参考校验通过。
