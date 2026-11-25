@@ -74,6 +74,7 @@
 - 授权矩阵加固（已运行通过）：复核 `authorizeVideoMethod` 发现 `redeem_invitation` 虽为 owner 专属（rpc 内联校验「Only the owner can provision a paired device」），却未列入 MANAGE_METHODS——operator 调用会穿过授权层、仅靠 rpc 内联拦截。将其纳入 MANAGE_METHODS，使设备配对/撤销/导入在授权层统一提前拒绝（纵深防御，rpc 内联校验保留）；authorization.test 补 operator/viewer 对 redeem_invitation 的拒绝断言。本机 vitest 真实运行 authorization 9＋rpc 1 全过。另核实 create_project/redeem_invitation 门控路径无误、viewer 严格只读、无方法落入默认放行。
 - createProject 范围/回滚不变量测试（已运行通过）：核实 `mutate` 为 BEGIN/COMMIT、execute 抛错即 ROLLBACK；`authorize` 首步按凭据 projectIds 拦截。scoped 设备 operator 调 create_project 时，新项目 id 超出凭据范围→快照读取授权失败→整事务回滚，无孤儿项目、无残留 grant。`store.test.ts` 增用例断言：创建抛「no access to this project」、owner 项目数不变、设备 grant 列表为空。本机 vitest 真实运行 store 8 项全过（累计 66 项 TS 测试绿）。另核实 requireRole 秩 viewer<operator<owner，viewer 无法 create_project。
 - pausing 真实故障终态测试（已运行通过）：补全 catch 故障矩阵边缘——pausing 中的 job 若 worker 在 abort 时抛非 CANCELLED 真实错误（如 FFMPEG_FAILED），应落 failed 并记录错误，而非被静默 paused（仅 CANCELLED＋pausing 才落 paused）。`job-supervisor.test.ts` 增用例断言 signal.aborted、state=failed、error.code=FFMPEG_FAILED。本机 vitest 真实运行 job-supervisor 10 项全过（累计 67 项 TS 测试绿）。
+- proposeCut 精度边界测试（已运行通过）：`cut.test.ts` 增「毫秒精度边界与整数位数上限」用例——最小合法裁剪 1ms（0→0.001，duration num=1）、9 位整数秒接受/10 位拒绝、裸小数「.5」与悬空小数点「1.」及「1.2.3」拒绝、首尾空白裁剪后解析。固化 milliseconds() 的 ^(\d{1,9})(?:\.(\d{1,3}))?$ 契约。本机 vitest 真实运行 cut 5 项全过（累计 68 项 TS 测试绿）。
 - [ ] 面向用户的生产 agent-worker 监督、真实模型调用、共享桌面/Android UI、打包与真实生成模型验收。
 
 ## 环境与错误

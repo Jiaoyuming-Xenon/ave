@@ -50,4 +50,20 @@ describe("proposeCut", () => {
   it("rejects an asset without a video stream", () => {
     expect(() => proposeCut(project, "missing", "0", "1")).toThrow("含视频流");
   });
+
+  it("honors millisecond precision boundaries and the integer-digit limit", () => {
+    // Smallest legal cut is one millisecond.
+    const tiny = proposeCut(project, "asset-1", "0", "0.001");
+    expect(tiny.trimOperations[0]!.sourceRange.duration).toEqual({ num: "1", den: "1000" });
+    // Nine integer digits are accepted; ten are rejected.
+    expect(() => proposeCut(project, "asset-1", "999999998", "999999999")).not.toThrow();
+    expect(() => proposeCut(project, "asset-1", "1234567890", "1234567891")).toThrow("非负秒数");
+    // A bare fraction or a trailing dot without decimals is malformed.
+    for (const bad of [".5", "1.", "1.2.3"]) {
+      expect(() => proposeCut(project, "asset-1", bad, "2")).toThrow("非负秒数");
+    }
+    // Surrounding whitespace is trimmed before parsing.
+    const padded = proposeCut(project, "asset-1", " 1.5 ", " 4.05 ");
+    expect(padded.trimOperations[0]!.sourceRange.start).toEqual({ num: "1500", den: "1000" });
+  });
 });
