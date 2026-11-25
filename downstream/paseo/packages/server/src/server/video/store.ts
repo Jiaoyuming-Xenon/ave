@@ -128,6 +128,8 @@ CREATE TABLE IF NOT EXISTS upload_chunks (
   upload_id TEXT NOT NULL, offset TEXT NOT NULL, chunk_sha256 TEXT NOT NULL,
   PRIMARY KEY(upload_id, offset)
 );
+-- Device project discovery joins grants by principal; the composite PK leads with project_id.
+CREATE INDEX IF NOT EXISTS idx_project_grants_principal ON project_grants(principal_id);
 `;
 
 export class EditorStore {
